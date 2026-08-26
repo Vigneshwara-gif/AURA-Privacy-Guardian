@@ -18,7 +18,7 @@ Phase 2 introduces this module but does NOT rewire the existing code to use
 it. That happens per-module in later phases so each change can be verified
 independently. Until then, these values are a *specification* of current
 behaviour, and the Phase 3 test suite asserts that the live code agrees with
-them. If a test fails, this file is wrong and must be corrected — the
+them. If a test fails, this file is wrong and must be corrected â€” the
 existing behaviour is the reference.
 
 Configuration precedence, lowest to highest:
@@ -76,7 +76,7 @@ def default_system_drive() -> str:
 
     ``sensors.get_disk_info`` hard-codes ``"C:\\"`` (audit finding F13). Windows
     exposes the real system drive via ``%SystemDrive%``, which is not always C:
-    — it differs on some corporate images and on Windows-To-Go installs.
+    â€” it differs on some corporate images and on Windows-To-Go installs.
     """
     if sys.platform == "win32":
         drive = os.environ.get("SystemDrive", "C:").strip()
@@ -131,7 +131,7 @@ class RiskBands(BaseModel):
 
         The score is authoritative. ``app.normalize_risk`` already relies on
         this property deliberately, to prevent contradictory displays such as
-        a score of 29 labelled PROTECTED — the stored log contains exactly
+        a score of 29 labelled PROTECTED â€” the stored log contains exactly
         such a row (2026-08-19 20:39:46, Risk_Score=10 with Risk=NORMAL).
         """
         if score >= self.critical:
@@ -251,7 +251,7 @@ class ProcessRatioThresholds(BaseModel):
     Source: privacy_monitor.py lines 627-634.
 
     Ratios rather than absolute counts, because a normal process count is
-    entirely machine-dependent — this repository's own history ranges from 368
+    entirely machine-dependent â€” this repository's own history ranges from 368
     to 391. ``classify_process_activity`` correctly returns NORMAL when no
     baseline exists rather than inventing an anomaly, and that behaviour is
     preserved.
@@ -286,7 +286,7 @@ class RiskConfig(BaseModel):
     # data: rows from 2026-08-19 21:57:17 onward reconcile exactly (an ML
     # anomaly plus a connection watch gives 30+2=32; adding a very-high
     # network rate gives 30+30+2=62). Rows before that timestamp do not
-    # reconcile — the same 96% CPU / 5000 KB/s input scored 70 — so they were
+    # reconcile â€” the same 96% CPU / 5000 KB/s input scored 70 â€” so they were
     # produced by an earlier, unrecoverable weight set and are stamped
     # version 1 by the Phase 7 import.
     scoring_version: int = Field(default=2, ge=1)
@@ -300,7 +300,7 @@ class RiskConfig(BaseModel):
     # Source: privacy_monitor.py line 1217.
     privacy_event_min_score: int = Field(default=25, ge=0, le=100)
 
-    # Source: privacy_monitor.py — exfiltration requires a suspicious network
+    # Source: privacy_monitor.py â€” exfiltration requires a suspicious network
     # signal AND an independent behavioural signal, never traffic volume
     # alone. Exposed as configuration so it can be tested, not so it can be
     # casually disabled.
@@ -329,7 +329,7 @@ class DetectionConfig(BaseModel):
     #
     # Version 1 is the current three-feature vector. Note that ``Cam`` is
     # effectively constant zero in the existing baseline, which makes it a
-    # near-zero-variance feature — a known detection-quality defect recorded
+    # near-zero-variance feature â€” a known detection-quality defect recorded
     # in the audit, to be addressed when the feature set is widened.
     feature_schema_version: int = Field(default=1, ge=1)
 
@@ -413,7 +413,7 @@ class SensorConfig(BaseModel):
     disk_path: str = ""
 
     # ------------------------------------------------------------------
-    # Webcam probe — privacy sensitive
+    # Webcam probe â€” privacy sensitive
     # ------------------------------------------------------------------
     # Disabled by default and must stay that way. cv2.VideoCapture physically
     # powers on the camera and illuminates its activity LED, so probing for
@@ -445,7 +445,7 @@ class SensorConfig(BaseModel):
     max_connection_records: int = Field(default=150, ge=1)
     max_process_records: int = Field(default=100, ge=1)
 
-    # Source: privacy_monitor._get_process_baseline — median of the last 50
+    # Source: privacy_monitor._get_process_baseline â€” median of the last 50
     # observations, requiring at least 5 valid samples before a baseline is
     # considered to exist.
     process_baseline_window: int = Field(default=50, ge=2)
@@ -465,7 +465,7 @@ class AlertConfig(BaseModel):
     """
     Alert engine behaviour. Consumed from Phase 6 onward.
 
-    No precedent exists in the current code, which has no alert lifecycle —
+    No precedent exists in the current code, which has no alert lifecycle â€”
     these are initial values to be tuned once real event volumes are
     observable.
     """
@@ -520,7 +520,7 @@ class StorageConfig(BaseModel):
     # and an API request can write at the same time.
     sqlite_busy_timeout_seconds: float = Field(default=5.0, ge=0.0)
 
-    # WAL allows readers to proceed during a write — appropriate for a
+    # WAL allows readers to proceed during a write â€” appropriate for a
     # write-often, read-often local application.
     sqlite_journal_mode: Literal["WAL", "DELETE", "TRUNCATE", "PERSIST", "MEMORY"] = "WAL"
 
@@ -600,6 +600,7 @@ class ApiConfig(BaseModel):
     cors_origins: tuple[str, ...] = (
         "http://127.0.0.1:5173",
         "http://localhost:5173",
+        "http://localhost:4173",
     )
 
     rate_limit_per_minute: int = Field(default=240, ge=1)

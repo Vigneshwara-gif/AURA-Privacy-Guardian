@@ -2,6 +2,7 @@ import React from 'react';
 import { Camera, Eye, Mic } from 'lucide-react';
 import { Badge } from '../../components/ui/Badge';
 import { useStream } from '../../context/StreamContext';
+import { getHardwarePresentation } from '../../utils/hardwarePresentation';
 
 export const PrivacyView: React.FC = () => {
   const { latestTelemetry, sensors } = useStream();
@@ -9,43 +10,8 @@ export const PrivacyView: React.FC = () => {
   const camSensor = sensors.find((s) => s.name.toLowerCase().includes('camera'));
   const micSensor = sensors.find((s) => s.name.toLowerCase().includes('audio') || s.name.toLowerCase().includes('microphone'));
 
-  // Truthful Hardware State Mapping based strictly on evidence
-  const getCameraBadge = (status?: string) => {
-    switch (status) {
-      case 'ACTIVE':
-        return { text: 'IN USE (ACTIVE CAPTURE DETECTED)', severity: 'HIGH' as const, note: 'DirectShow descriptor indicates an active video stream session.' };
-      case 'INACTIVE':
-        return { text: 'NOT IN USE (DEVICE IDLE)', severity: 'LOW' as const, note: 'Verified zero active DirectShow media stream sessions.' };
-      case 'MUTED':
-        return { text: 'HARDWARE MUTED', severity: 'LOW' as const, note: 'Camera sensor hardware privacy switch is engaged.' };
-      case 'UNAVAILABLE':
-        return { text: 'DEVICE UNAVAILABLE', severity: 'MEDIUM' as const, note: 'No DirectShow video capture devices enumerated on this host.' };
-      case 'NOT_PROBED':
-      case 'UNKNOWN':
-      default:
-        return { text: 'STATUS UNAVAILABLE (DESCRIPTOR MONITORING ONLY)', severity: 'INFO' as const, note: 'DirectShow probe did not execute or returned unprobed descriptor metadata.' };
-    }
-  };
-
-  const getMicrophoneBadge = (status?: string) => {
-    switch (status) {
-      case 'ACTIVE':
-        return { text: 'IN USE (ACTIVE CAPTURE DETECTED)', severity: 'HIGH' as const, note: 'Windows CoreAudio active audio session enumerator detected active capture.' };
-      case 'INACTIVE':
-        return { text: 'NOT IN USE (DEVICE IDLE)', severity: 'LOW' as const, note: 'Verified zero active CoreAudio recording client sessions.' };
-      case 'MUTED':
-        return { text: 'HARDWARE MUTED', severity: 'LOW' as const, note: 'Microphone hardware or OS input volume is muted.' };
-      case 'UNAVAILABLE':
-        return { text: 'DEVICE UNAVAILABLE', severity: 'MEDIUM' as const, note: 'No CoreAudio audio input endpoints detected on this host.' };
-      case 'NOT_PROBED':
-      case 'UNKNOWN':
-      default:
-        return { text: 'STATUS UNAVAILABLE (DESCRIPTOR MONITORING ONLY)', severity: 'INFO' as const, note: 'CoreAudio probe returned unprobed state. No raw audio is recorded.' };
-    }
-  };
-
-  const camBadge = getCameraBadge(latestTelemetry?.camera_status);
-  const micBadge = getMicrophoneBadge(latestTelemetry?.microphone_status);
+  const camInfo = getHardwarePresentation('camera', latestTelemetry?.camera_status);
+  const micInfo = getHardwarePresentation('microphone', latestTelemetry?.microphone_status);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
@@ -114,13 +80,13 @@ export const PrivacyView: React.FC = () => {
                 Camera Video Sentinel
               </span>
             </div>
-            <Badge severity={camBadge.severity} size="sm">{camBadge.text}</Badge>
+            <Badge severity={camInfo.severity} size="sm">{camInfo.badgeText}</Badge>
           </div>
           <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-            {latestTelemetry?.camera_status || 'STATUS UNAVAILABLE'}
+            {camInfo.primaryTitle}
           </div>
           <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-            {camBadge.note}
+            {camInfo.description}
           </p>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 'auto' }}>
             DirectShow Probe: {camSensor?.status ?? 'PASSIVE'}
@@ -146,13 +112,13 @@ export const PrivacyView: React.FC = () => {
                 Microphone Audio Sentinel
               </span>
             </div>
-            <Badge severity={micBadge.severity} size="sm">{micBadge.text}</Badge>
+            <Badge severity={micInfo.severity} size="sm">{micInfo.badgeText}</Badge>
           </div>
           <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-            {latestTelemetry?.microphone_status || 'STATUS UNAVAILABLE'}
+            {micInfo.primaryTitle}
           </div>
           <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.5 }}>
-            {micBadge.note}
+            {micInfo.description}
           </p>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginTop: 'auto' }}>
             CoreAudio Session Enumerator: {micSensor?.status ?? 'PASSIVE'}

@@ -455,7 +455,7 @@ async def stream_endpoint(
     """Authenticated real-time WebSocket live-stream endpoint."""
     # Origin check
     origin = websocket.headers.get("origin", "")
-    allowed_origins = {"http://127.0.0.1:5173", "http://localhost:5173", "http://127.0.0.1:8787", "http://localhost:8787"}
+    allowed_origins = {"http://127.0.0.1:5173", "http://localhost:5173", "http://localhost:4173", "http://127.0.0.1:8787", "http://localhost:8787"}
     if origin and origin not in allowed_origins:
         logger.warning("Rejected WebSocket connection from unauthorized Origin: %r", origin)
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
