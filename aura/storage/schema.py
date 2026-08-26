@@ -1,18 +1,12 @@
 """
 Database schema definitions and migrations for AURA storage layer.
-
-Supports SQLite in WAL mode with strict parameterized queries,
-versioned schema migrations, and optimized indexes.
 """
 
 from __future__ import annotations
 
-import logging
 from typing import NamedTuple
 
-logger = logging.getLogger(__name__)
-
-CURRENT_SCHEMA_VERSION = 1
+CURRENT_SCHEMA_VERSION = 2
 
 
 class Migration(NamedTuple):
@@ -26,14 +20,12 @@ MIGRATIONS: tuple[Migration, ...] = (
         version=1,
         description="Initial AURA production schema: telemetry, security_events, baseline_profiles, scan_runs",
         up_sql="""
-        -- Schema migration history tracking
         CREATE TABLE IF NOT EXISTS schema_migrations (
             version INTEGER PRIMARY KEY,
             applied_at TEXT NOT NULL,
             description TEXT NOT NULL
         );
 
-        -- Telemetry time-series measurements
         CREATE TABLE IF NOT EXISTS telemetry (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp TEXT NOT NULL,
@@ -55,7 +47,6 @@ MIGRATIONS: tuple[Migration, ...] = (
 
         CREATE INDEX IF NOT EXISTS idx_telemetry_timestamp ON telemetry(timestamp);
 
-        -- Structured security and privacy events
         CREATE TABLE IF NOT EXISTS security_events (
             event_id TEXT PRIMARY KEY,
             timestamp TEXT NOT NULL,
@@ -75,7 +66,6 @@ MIGRATIONS: tuple[Migration, ...] = (
         CREATE INDEX IF NOT EXISTS idx_events_severity ON security_events(severity);
         CREATE INDEX IF NOT EXISTS idx_events_type ON security_events(event_type);
 
-        -- Baseline machine learning profiles
         CREATE TABLE IF NOT EXISTS baseline_profiles (
             profile_id TEXT PRIMARY KEY,
             created_at TEXT NOT NULL,
@@ -89,7 +79,6 @@ MIGRATIONS: tuple[Migration, ...] = (
 
         CREATE INDEX IF NOT EXISTS idx_baseline_created_at ON baseline_profiles(created_at);
 
-        -- Scan execution log
         CREATE TABLE IF NOT EXISTS scan_runs (
             scan_id TEXT PRIMARY KEY,
             started_at TEXT NOT NULL,
@@ -103,6 +92,24 @@ MIGRATIONS: tuple[Migration, ...] = (
         );
 
         CREATE INDEX IF NOT EXISTS idx_scans_started_at ON scan_runs(started_at);
+        """,
+    ),
+    Migration(
+        version=2,
+        description="Audit logs and risk history ledger",
+        up_sql="""
+        CREATE TABLE IF NOT EXISTS audit_logs (
+            log_id TEXT PRIMARY KEY,
+            timestamp TEXT NOT NULL,
+            action TEXT NOT NULL,
+            actor TEXT NOT NULL,
+            target TEXT,
+            details_json TEXT,
+            result TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp);
+        CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
         """,
     ),
 )

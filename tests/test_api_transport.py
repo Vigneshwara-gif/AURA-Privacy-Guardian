@@ -52,14 +52,20 @@ async def asgi_client(
         elif message["type"] == "http.response.body":
             response_body.extend(message.get("body", b""))
 
+    clean_path = path
+    if "?" in path:
+        clean_path, qs = path.split("?", 1)
+        if not query_string:
+            query_string = qs.encode("utf-8")
+
     scope = {
         "type": "http",
         "asgi": {"version": "3.0"},
         "http_version": "1.1",
         "method": method.upper(),
         "scheme": "http",
-        "path": path,
-        "raw_path": path.encode("utf-8"),
+        "path": clean_path,
+        "raw_path": clean_path.encode("utf-8"),
         "query_string": query_string,
         "headers": req_headers,
         "client": ("127.0.0.1", 12345),

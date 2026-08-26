@@ -92,20 +92,63 @@ class ProcessIntelligenceCollector:
         """Query detailed information for a specific PID."""
         try:
             p = psutil.Process(pid)
-            ctime = p.create_time()
-            ctime_iso = datetime.fromtimestamp(ctime, timezone.utc).isoformat()
-            return ProcessInfo(
-                pid=pid,
-                name=p.name(),
-                exe_path=p.exe() if hasattr(p, "exe") else None,
-                parent_pid=p.ppid(),
-                created_time=ctime_iso,
-                cpu_percent=p.cpu_percent(interval=None),
-                memory_rss_bytes=p.memory_info().rss,
-                status=p.status(),
-                username=p.username() if hasattr(p, "username") else None,
-                is_elevated=False,
-                confidence=ConfidenceLevel.OBSERVED,
-            )
+            name = p.name()
         except (psutil.NoSuchProcess, psutil.AccessDenied, psutil.ZombieProcess):
             return None
+
+        ctime_iso = datetime.now(timezone.utc).isoformat()
+        try:
+            ctime = p.create_time()
+            ctime_iso = datetime.fromtimestamp(ctime, timezone.utc).isoformat()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+
+        exe_path = None
+        try:
+            exe_path = p.exe()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+
+        parent_pid = None
+        try:
+            parent_pid = p.ppid()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+
+        cpu_percent = 0.0
+        try:
+            cpu_percent = p.cpu_percent(interval=None)
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+
+        mem_rss = 0
+        try:
+            mem_rss = p.memory_info().rss
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+
+        status_str = "running"
+        try:
+            status_str = p.status()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+
+        username = None
+        try:
+            username = p.username()
+        except (psutil.NoSuchProcess, psutil.AccessDenied):
+            pass
+
+        return ProcessInfo(
+            pid=pid,
+            name=name,
+            exe_path=exe_path,
+            parent_pid=parent_pid,
+            created_time=ctime_iso,
+            cpu_percent=cpu_percent,
+            memory_rss_bytes=mem_rss,
+            status=status_str,
+            username=username,
+            is_elevated=(exe_path is None and pid > 0),
+            confidence=ConfidenceLevel.OBSERVED,
+        )

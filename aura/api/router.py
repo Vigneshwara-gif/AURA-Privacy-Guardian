@@ -14,6 +14,7 @@ from fastapi import (
     APIRouter,
     Depends,
     Header,
+    HTTPException,
     Query,
     Request,
     WebSocket,
@@ -21,6 +22,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel, Field
 
 from aura.api.auth import SessionManager
 from aura.api.dependencies import (
@@ -442,6 +444,245 @@ async def acknowledge_event(
 
 
 # ======================================================================
+
+# ======================================================================
+# Process Intelligence & Investigation Routes
+# ======================================================================
+
+class TerminateProcessRequest(BaseModel):
+    confirm: bool = True
+    reason: str = Field(min_length=1, default="Terminated by operator via AURA security action")
+
+
+class OpenShortcutRequest(BaseModel):
+    target: str
+
+
+@router.get("/processes", summary="Query active processes with memory, CPU, and sockets")
+async def list_processes(
+    limit: int = Query(default=20, ge=1, le=100),
+    _: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+) -> list[dict[str, Any]]:
+    from aura.sensors.process_intel import ProcessIntelligenceCollector
+    from aura.sensors.network_intel import NetworkIntelligenceCollector
+
+    procs = await asyncio.to_thread(ProcessIntelligenceCollector.get_top_processes, limit)
+    conns = await asyncio.to_thread(NetworkIntelligenceCollector.get_active_connections, 100)
+
+    pid_conns: dict[int, int] = {}
+    for c in conns:
+        if c.pid:
+            pid_conns[c.pid] = pid_conns.get(c.pid, 0) + 1
+
+    return [
+        {
+            "pid": p.pid,
+            "name": p.name,
+            "memory_mb": round(p.memory_rss_bytes / (1024 * 1024), 1),
+            "status": p.status,
+            "open_sockets": pid_conns.get(p.pid, 0),
+        }
+        for p in procs
+    ]
+
+
+@router.get("/processes/{pid}", summary="Detailed process investigation")
+async def investigate_process(
+    pid: int,
+    _: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+) -> dict[str, Any]:
+    from aura.sensors.process_intel import ProcessIntelligenceCollector
+    from aura.sensors.network_intel import NetworkIntelligenceCollector
+
+    p_info = await asyncio.to_thread(ProcessIntelligenceCollector.get_process_by_pid, pid)
+    if not p_info:
+        raise NotFoundError(f"Process PID {pid} not found or terminated.")
+
+    conns = await asyncio.to_thread(NetworkIntelligenceCollector.get_active_connections, 200)
+    proc_conns = [c.to_dict() for c in conns if c.pid == pid]
+
+    return {
+        "pid": p_info.pid,
+        "name": p_info.name,
+        "exe_path": p_info.exe_path,
+        "parent_pid": p_info.parent_pid,
+        "created_time": p_info.created_time,
+        "cpu_percent": p_info.cpu_percent,
+        "memory_mb": round(p_info.memory_rss_bytes / (1024 * 1024), 1),
+        "username": p_info.username,
+        "is_elevated": p_info.is_elevated,
+        "active_sockets": proc_conns,
+    }
+
+
+@router.post("/processes/{pid}/terminate", summary="Safe, user-confirmed process termination")
+async def terminate_process(
+    pid: int,
+    body: TerminateProcessRequest,
+    storage: StorageEngine = Depends(get_storage),
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.OPERATOR)),
+) -> dict[str, Any]:
+    import psutil
+    if not body.confirm:
+        raise HTTPException(status_code=400, detail="Process termination requires explicit confirmation (confirm: true).")
+
+    try:
+        proc = psutil.Process(pid)
+        proc_name = proc.name()
+        proc.terminate()
+        try:
+            proc.wait(timeout=2.0)
+        except psutil.TimeoutExpired:
+            proc.kill()
+
+        storage.record_audit_log(
+            action="PROCESS_TERMINATED",
+            actor=claims.issued_to,
+            target=f"PID {pid} ({proc_name})",
+            details={"reason": body.reason, "pid": pid, "process_name": proc_name},
+            result="SUCCESS",
+        )
+        return {
+            "status": "TERMINATED",
+            "pid": pid,
+            "process_name": proc_name,
+            "message": f"Process {proc_name} (PID: {pid}) terminated cleanly.",
+        }
+    except psutil.NoSuchProcess:
+        raise NotFoundError(f"Process PID {pid} does not exist.")
+    except psutil.AccessDenied as exc:
+        storage.record_audit_log(
+            action="PROCESS_TERMINATION_DENIED",
+            actor=claims.issued_to,
+            target=f"PID {pid}",
+            details={"reason": body.reason, "error": str(exc)},
+            result="ACCESS_DENIED",
+        )
+        raise HTTPException(
+            status_code=403,
+            detail=f"Access denied: Terminating PID {pid} requires Windows administrative elevation.",
+        )
+
+
+# ======================================================================
+# Audit Logs & Reports Routes
+# ======================================================================
+
+@router.get("/audit/logs", summary="Query audit ledger of system and security actions")
+async def get_audit_logs(
+    limit: int = Query(default=50, ge=1, le=200),
+    storage: StorageEngine = Depends(get_storage),
+    _: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+) -> list[dict[str, Any]]:
+    return await asyncio.to_thread(storage.get_audit_logs, limit)
+
+
+@router.get("/reports/export", summary="Export comprehensive security & privacy audit report")
+async def export_report(
+    format: str = Query(default="json", pattern="^(json|markdown)$"),
+    engine: AuraEngineService = Depends(get_engine),
+    storage: StorageEngine = Depends(get_storage),
+    _: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+) -> Any:
+    import sys
+    snap = await asyncio.to_thread(engine.collector.collect_snapshot, probe_camera=True, probe_microphone=True)
+    events = await asyncio.to_thread(storage.get_recent_events, 20)
+    audit = await asyncio.to_thread(storage.get_audit_logs, 20)
+    risk_res = await asyncio.to_thread(engine.scan_once, is_demo=True)
+
+    report_data = {
+        "report_title": "AURA Privacy Guardian Security & Privacy Audit Report",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "host_platform": sys.platform,
+        "system_status": {
+            "cpu_percent": snap.cpu_percent,
+            "memory_percent": snap.memory_percent,
+            "disk_free_gb": snap.disk_free_gb,
+            "process_count": snap.process_count,
+            "established_connections": snap.established_connections,
+            "camera_status": snap.camera_status.value,
+            "microphone_status": snap.microphone_status.value,
+        },
+        "risk_evaluation": {
+            "risk_score": risk_res.event.risk_score,
+            "severity": risk_res.event.severity,
+            "summary": risk_res.event.summary,
+            "reasons": risk_res.reasons,
+        },
+        "recent_security_events": events,
+        "audit_trail": audit,
+    }
+
+    if format == "markdown":
+        md = f"# AURA Security & Privacy Audit Report\n**Generated:** {report_data['generated_at']}\n**Overall Risk:** {risk_res.event.risk_score:.1f} / 100 ({risk_res.event.severity})\n\n## Host Hardware & Telemetry\n- CPU Utilization: {snap.cpu_percent:.1f}%\n- Physical RAM: {snap.memory_percent:.1f}%\n- Active Processes: {snap.process_count}\n- Established Connections: {snap.established_connections}\n- Camera Sensor State: {snap.camera_status.value}\n- Microphone Sensor State: {snap.microphone_status.value}\n\n## Recent Security Incidents ({len(events)})\n"
+        for e in events[:5]:
+            md += f"- **[{e['severity']}] {e['event_type']}**: {e['summary']} ({e['timestamp']})\n"
+        return {"report_markdown": md}
+
+    return report_data
+
+
+# ======================================================================
+# Windows Privacy & Security Shortcuts
+# ======================================================================
+
+@router.get("/shortcuts/windows-privacy", summary="List verified Windows system privacy settings URI shortcuts")
+async def get_privacy_shortcuts(
+    _: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+) -> list[dict[str, str]]:
+    return [
+        {"id": "camera", "name": "Camera Privacy Settings", "uri": "ms-settings:privacy-webcam", "description": "Configure app camera permissions"},
+        {"id": "microphone", "name": "Microphone Privacy Settings", "uri": "ms-settings:privacy-microphone", "description": "Configure app microphone permissions"},
+        {"id": "security", "name": "Windows Security", "uri": "windowsdefender:", "description": "Open Windows Defender security dashboard"},
+        {"id": "privacy", "name": "Windows General Privacy", "uri": "ms-settings:privacy", "description": "Open Windows privacy controls"},
+    ]
+
+
+@router.post("/shortcuts/open", summary="Safely open Windows system settings shortcut")
+async def open_shortcut(
+    body: OpenShortcutRequest,
+    storage: StorageEngine = Depends(get_storage),
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.OPERATOR)),
+) -> dict[str, str]:
+    import sys
+    import os
+    allowed_uris = {
+        "ms-settings:privacy-webcam",
+        "ms-settings:privacy-microphone",
+        "windowsdefender:",
+        "ms-settings:privacy",
+    }
+    if body.target not in allowed_uris:
+        raise HTTPException(status_code=400, detail="Invalid shortcut target URI.")
+
+    if sys.platform == "win32":
+        try:
+            os.startfile(body.target)
+            storage.record_audit_log(
+                action="OPENED_WINDOWS_SHORTCUT",
+                actor=claims.issued_to,
+                target=body.target,
+                result="SUCCESS",
+            )
+            return {"status": "OPENED", "target": body.target}
+        except Exception as exc:
+            raise HTTPException(status_code=500, detail=f"Failed to launch shortcut: {exc}")
+    return {"status": "UNSUPPORTED", "message": "Shortcuts only supported on Windows host."}
+
+
+# ======================================================================
+# Historical Risk Route
+# ======================================================================
+
+@router.get("/risk/history", summary="Historical risk score series from SQLite")
+async def get_risk_history_route(
+    limit: int = Query(default=100, ge=1, le=500),
+    storage: StorageEngine = Depends(get_storage),
+    _: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+) -> list[dict[str, Any]]:
+    return await asyncio.to_thread(storage.get_risk_history, limit)
+
+
 # WebSocket Live Stream Route
 # ======================================================================
 

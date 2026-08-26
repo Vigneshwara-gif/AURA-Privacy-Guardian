@@ -107,4 +107,6 @@ desktop.ini
 *.db
 *.db-shm
 *.db-wal
+scratch/
+AURA-Privacy-Guardian/
 

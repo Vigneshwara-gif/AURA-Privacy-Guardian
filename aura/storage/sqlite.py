@@ -1,7 +1,5 @@
 """
 Production SQLite storage engine for AURA.
-
-Enforces WAL mode, thread safety, parameterized queries, and bounded retention.
 """
 
 from __future__ import annotations
@@ -14,6 +12,7 @@ from pathlib import Path
 import sqlite3
 import threading
 from typing import Any, Generator
+import uuid
 
 from aura.models.types import SecurityEvent, TelemetrySnapshot
 from aura.storage.schema import CURRENT_SCHEMA_VERSION, MIGRATIONS
@@ -22,8 +21,6 @@ logger = logging.getLogger(__name__)
 
 
 class StorageEngine:
-    """Thread-safe SQLite storage engine with WAL mode and schema migrations."""
-
     def __init__(
         self,
         db_path: Path | str,
@@ -37,19 +34,17 @@ class StorageEngine:
         self._local = threading.local()
         self._all_connections: set[sqlite3.Connection] = set()
 
-        # Ensure parent directory exists
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.migrate()
 
     def _get_connection(self) -> sqlite3.Connection:
-        """Return a thread-local SQLite connection configured for AURA."""
         conn = getattr(self._local, "connection", None)
         if conn is None:
             conn = sqlite3.connect(
                 str(self.db_path),
                 timeout=self.busy_timeout,
                 check_same_thread=False,
-                isolation_level=None,  # Autocommit mode; explicit BEGIN for transactions
+                isolation_level=None,
             )
             conn.row_factory = sqlite3.Row
             if self.wal_mode:
@@ -64,7 +59,6 @@ class StorageEngine:
 
     @contextmanager
     def transaction(self) -> Generator[sqlite3.Cursor, None, None]:
-        """Context manager providing an ACID transaction with automatic rollback on error."""
         conn = self._get_connection()
         with self._lock:
             conn.execute("BEGIN IMMEDIATE;")
@@ -79,10 +73,8 @@ class StorageEngine:
                 cursor.close()
 
     def migrate(self) -> None:
-        """Apply all unapplied schema migrations."""
         with self._lock:
             conn = self._get_connection()
-            # Ensure schema_migrations table exists
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS schema_migrations (
                     version INTEGER PRIMARY KEY,
@@ -110,7 +102,6 @@ class StorageEngine:
                     )
 
     def record_telemetry(self, snapshot: TelemetrySnapshot) -> int:
-        """Persist a single telemetry snapshot and return its row ID."""
         sql = """
         INSERT INTO telemetry (
             timestamp, cpu_percent, memory_percent, disk_percent, disk_io_kbps,
@@ -146,7 +137,6 @@ class StorageEngine:
             return int(cur.lastrowid)
 
     def record_security_event(self, event: SecurityEvent) -> str:
-        """Persist a security event record and return its event ID."""
         sql = """
         INSERT INTO security_events (
             event_id, timestamp, event_type, severity, risk_score, source,
@@ -188,7 +178,6 @@ class StorageEngine:
         severity: str | None = None,
         error_message: str | None = None,
     ) -> str:
-        """Persist a scan run record."""
         sql = """
         INSERT INTO scan_runs (
             scan_id, started_at, completed_at, trigger_source,
@@ -212,131 +201,181 @@ class StorageEngine:
             )
             return scan_id
 
+    def record_audit_log(
+        self,
+        action: str,
+        actor: str = "User",
+        target: str | None = None,
+        details: dict[str, Any] | None = None,
+        result: str = "SUCCESS",
+    ) -> str:
+        log_id = str(uuid.uuid4())
+        now = datetime.now(timezone.utc).isoformat()
+        details_json = json.dumps(details) if details else None
+        sql = """
+        INSERT INTO audit_logs (log_id, timestamp, action, actor, target, details_json, result)
+        VALUES (?, ?, ?, ?, ?, ?, ?);
+        """
+        with self.transaction() as cur:
+            cur.execute(sql, (log_id, now, action, actor, target, details_json, result))
+            return log_id
+
+    def get_audit_logs(self, limit: int = 50) -> list[dict[str, Any]]:
+        conn = self._get_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute("SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT ?;", (max(1, limit),))
+            rows = cur.fetchall()
+            logs = []
+            for r in rows:
+                d = dict(r)
+                if d.get("details_json"):
+                    try:
+                        d["details"] = json.loads(d["details_json"])
+                    except Exception:
+                        d["details"] = {}
+                else:
+                    d["details"] = {}
+                logs.append(d)
+            return logs
+        finally:
+            cur.close()
+
     def get_recent_events(
         self,
         limit: int = 100,
         min_severity: str | None = None,
     ) -> list[dict[str, Any]]:
-        """Query recent security events ordered reverse-chronologically."""
         conn = self._get_connection()
         cursor = conn.cursor()
-
-        if min_severity:
-            cursor.execute(
-                "SELECT * FROM security_events WHERE severity = ? ORDER BY timestamp DESC LIMIT ?;",
-                (min_severity.upper(), max(1, limit)),
-            )
-        else:
-            cursor.execute(
-                "SELECT * FROM security_events ORDER BY timestamp DESC LIMIT ?;",
-                (max(1, limit),),
-            )
-
-        rows = cursor.fetchall()
-        cursor.close()
-        results: list[dict[str, Any]] = []
-        for row in rows:
-            d = dict(row)
-            if d.get("evidence_json"):
-                try:
-                    d["evidence"] = json.loads(d["evidence_json"])
-                except Exception:
-                    d["evidence"] = []
+        try:
+            if min_severity:
+                cursor.execute(
+                    "SELECT * FROM security_events WHERE severity = ? ORDER BY timestamp DESC LIMIT ?;",
+                    (min_severity.upper(), max(1, limit)),
+                )
             else:
-                d["evidence"] = []
-            results.append(d)
-        return results
+                cursor.execute(
+                    "SELECT * FROM security_events ORDER BY timestamp DESC LIMIT ?;",
+                    (max(1, limit),),
+                )
 
-    def get_event_count(self) -> int:
-        """Return total count of recorded security events."""
-        conn = self._get_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) AS count FROM security_events;")
-        row = cursor.fetchone()
-        cursor.close()
-        return int(row["count"]) if row else 0
-
-    def get_telemetry_count(self) -> int:
-        """Return total count of recorded telemetry snapshots."""
-        conn = self._get_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) AS count FROM telemetry;")
-        row = cursor.fetchone()
-        cursor.close()
-        return int(row["count"]) if row else 0
-
-    def get_event_counts_by_severity(self) -> dict[str, int]:
-        """Return distribution of security events by severity."""
-        conn = self._get_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT severity, COUNT(*) AS total FROM security_events GROUP BY severity;")
-        counts = {row["severity"]: int(row["total"]) for row in cursor.fetchall()}
-        cursor.close()
-        return counts
+            rows = cursor.fetchall()
+            results: list[dict[str, Any]] = []
+            for row in rows:
+                d = dict(row)
+                if d.get("evidence_json"):
+                    try:
+                        d["evidence"] = json.loads(d["evidence_json"])
+                    except Exception:
+                        d["evidence"] = []
+                else:
+                    d["evidence"] = []
+                results.append(d)
+            return results
+        finally:
+            cursor.close()
 
     def get_recent_telemetry(self, limit: int = 100) -> list[dict[str, Any]]:
-        """Query recent telemetry rows."""
         conn = self._get_connection()
         cursor = conn.cursor()
-        cursor.execute(
-            "SELECT * FROM telemetry ORDER BY timestamp DESC LIMIT ?;",
-            (max(1, limit),),
-        )
-        rows = cursor.fetchall()
-        cursor.close()
-        return [dict(row) for row in rows]
+        try:
+            cursor.execute("SELECT * FROM telemetry ORDER BY timestamp DESC LIMIT ?;", (max(1, limit),))
+            rows = cursor.fetchall()
+            return [dict(r) for r in rows]
+        finally:
+            cursor.close()
 
-    def get_telemetry_series(self, metric: str, limit: int = 300) -> list[tuple[str, float]]:
-        """Return time-series pairs for a specific numeric column in telemetry."""
-        allowed_columns = {
-            "cpu_percent",
-            "memory_percent",
-            "disk_percent",
-            "disk_io_kbps",
-            "net_up_kbps",
-            "net_down_kbps",
-            "process_count",
-            "remote_conns",
-        }
-        if metric not in allowed_columns:
-            raise ValueError(f"Invalid metric column requested: {metric}")
-
+    def get_event_counts_by_severity(self) -> dict[str, int]:
         conn = self._get_connection()
         cursor = conn.cursor()
-        cursor.execute(
-            f"SELECT timestamp, {metric} FROM telemetry WHERE {metric} IS NOT NULL ORDER BY timestamp DESC LIMIT ?;",
-            (max(1, limit),),
-        )
-        rows = cursor.fetchall()
-        cursor.close()
-        # Return chronological order
-        return [(row["timestamp"], float(row[metric])) for row in reversed(rows)]
+        try:
+            cursor.execute("SELECT severity, COUNT(*) as count FROM security_events GROUP BY severity;")
+            rows = cursor.fetchall()
+            counts = {"INFO": 0, "LOW": 0, "MEDIUM": 0, "HIGH": 0, "CRITICAL": 0}
+            for row in rows:
+                sev = row["severity"]
+                if sev in counts:
+                    counts[sev] = row["count"]
+            return counts
+        finally:
+            cursor.close()
 
-    def prune_retention(
+    def get_risk_history(self, limit: int = 100) -> list[dict[str, Any]]:
+        conn = self._get_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute(
+                """
+                SELECT timestamp, risk_score, severity, event_type, summary
+                FROM security_events
+                ORDER BY timestamp DESC LIMIT ?;
+                """,
+                (max(1, limit),),
+            )
+            rows = cur.fetchall()
+            return [dict(r) for r in reversed(rows)]
+        finally:
+            cur.close()
+
+    def get_telemetry_series(
         self,
-        retention_days: int = 90,
-        metrics_retention_days: int = 14,
-    ) -> dict[str, int]:
-        """Prune telemetry and events older than retention thresholds."""
+        metric_column: str,
+        limit: int = 100,
+    ) -> list[tuple[str, float]]:
+        allowed = {
+            "cpu_percent", "memory_percent", "disk_percent", "disk_io_kbps",
+            "net_up_kbps", "net_down_kbps", "process_count", "remote_conns",
+        }
+        if metric_column not in allowed:
+            raise ValueError(f"Invalid metric column: {metric_column}")
+
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute(
+                f"SELECT timestamp, {metric_column} FROM telemetry ORDER BY timestamp DESC LIMIT ?;",
+                (max(1, limit),),
+            )
+            rows = cursor.fetchall()
+            return [(row["timestamp"], float(row[metric_column] or 0.0)) for row in reversed(rows)]
+        finally:
+            cursor.close()
+
+    def get_event_count(self) -> int:
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT COUNT(*) as count FROM security_events;")
+            row = cursor.fetchone()
+            return int(row["count"]) if row else 0
+        finally:
+            cursor.close()
+
+    def get_telemetry_count(self) -> int:
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT COUNT(*) as count FROM telemetry;")
+            row = cursor.fetchone()
+            return int(row["count"]) if row else 0
+        finally:
+            cursor.close()
+
+    def prune_retention(self, retention_days: int = 90, metrics_retention_days: int = 14) -> dict[str, int]:
         cutoff_events = (datetime.now(timezone.utc) - timedelta(days=retention_days)).isoformat()
-        cutoff_telemetry = (datetime.now(timezone.utc) - timedelta(days=metrics_retention_days)).isoformat()
+        cutoff_metrics = (datetime.now(timezone.utc) - timedelta(days=metrics_retention_days)).isoformat()
 
-        pruned = {"events": 0, "telemetry": 0, "scan_runs": 0}
+        pruned = {"events": 0, "telemetry": 0}
         with self.transaction() as cur:
-            cur.execute("DELETE FROM telemetry WHERE timestamp < ?;", (cutoff_telemetry,))
-            pruned["telemetry"] = cur.rowcount
-
             cur.execute("DELETE FROM security_events WHERE timestamp < ?;", (cutoff_events,))
             pruned["events"] = cur.rowcount
+            cur.execute("DELETE FROM telemetry WHERE timestamp < ?;", (cutoff_metrics,))
+            pruned["telemetry"] = cur.rowcount
 
-            cur.execute("DELETE FROM scan_runs WHERE started_at < ?;", (cutoff_events,))
-            pruned["scan_runs"] = cur.rowcount
-
-        logger.info("Storage retention pruning completed: %s", pruned)
         return pruned
 
     def close(self) -> None:
-        """Close all registered SQLite connections."""
         with self._lock:
             for conn in list(self._all_connections):
                 try:
@@ -344,4 +383,3 @@ class StorageEngine:
                 except Exception:
                     pass
             self._all_connections.clear()
-        self._local.connection = None

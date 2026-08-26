@@ -1,8 +1,5 @@
 """
 Windows Network Intelligence Collector for AURA.
-
-Categorizes active socket endpoints (Loopback, Local LAN, WAN Public),
-correlates socket PIDs to processes, and tracks connection velocity without sniffing packet contents.
 """
 
 from __future__ import annotations
@@ -20,8 +17,6 @@ logger = logging.getLogger(__name__)
 
 
 class SocketCategory(str, Enum):
-    """Network connection scope category."""
-
     LOOPBACK = "LOOPBACK"
     LOCAL_SUBNET = "LOCAL_SUBNET"
     REMOTE_PUBLIC = "REMOTE_PUBLIC"
@@ -30,8 +25,6 @@ class SocketCategory(str, Enum):
 
 @dataclass
 class ConnectionInfo:
-    """Strongly typed metadata for an active network socket."""
-
     local_ip: str
     local_port: int
     remote_ip: str | None
@@ -42,13 +35,23 @@ class ConnectionInfo:
     category: SocketCategory
     confidence: ConfidenceLevel = ConfidenceLevel.OBSERVED
 
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "local_ip": self.local_ip,
+            "local_port": self.local_port,
+            "remote_ip": self.remote_ip,
+            "remote_port": self.remote_port,
+            "status": self.status,
+            "pid": self.pid,
+            "process_name": self.process_name,
+            "category": self.category.value,
+            "confidence": self.confidence.value,
+        }
+
 
 class NetworkIntelligenceCollector:
-    """Inspects and categorizes active socket endpoints on Windows."""
-
     @staticmethod
     def classify_ip(ip_str: str | None) -> SocketCategory:
-        """Classify an IP string into Loopback, Local Subnet, or Remote Public."""
         if not ip_str:
             return SocketCategory.UNKNOWN
         try:
@@ -63,13 +66,11 @@ class NetworkIntelligenceCollector:
 
     @classmethod
     def get_active_connections(cls, limit: int = 50) -> list[ConnectionInfo]:
-        """Collect and categorize active network connections with bounded lookup overhead."""
         connections: list[ConnectionInfo] = []
         try:
             raw_conns = psutil.net_connections(kind="inet")
             sliced_conns = raw_conns[:limit]
 
-            # Cache unique PID lookups in bulk
             pid_names: dict[int, str] = {}
             unique_pids = {c.pid for c in sliced_conns if c.pid}
             for pid in unique_pids:
@@ -100,9 +101,36 @@ class NetworkIntelligenceCollector:
                         confidence=ConfidenceLevel.OBSERVED,
                     )
                 )
-        except (psutil.AccessDenied, PermissionError):
-            logger.debug("Socket enumeration requires elevation on Windows.")
         except Exception as exc:
-            logger.warning("Error querying network connections: %s", exc)
+            logger.debug("Error retrieving network connections: %s", exc)
 
         return connections
+
+    @classmethod
+    def analyze_network_anomalies(
+        cls,
+        connections: list[ConnectionInfo],
+        current_net_upload_kbps: float = 0.0,
+        baseline_upload_kbps: float = 50.0,
+    ) -> list[dict[str, Any]]:
+        anomalies: list[dict[str, Any]] = []
+
+        if current_net_upload_kbps > max(500.0, baseline_upload_kbps * 4.0):
+            anomalies.append({
+                "type": "OUTBOUND_TRAFFIC_SPIKE",
+                "severity": "HIGH",
+                "detail": f"Outbound network throughput ({current_net_upload_kbps:.1f} KB/s) is 4x above baseline.",
+                "observed_value": current_net_upload_kbps,
+                "baseline_value": baseline_upload_kbps,
+            })
+
+        remote_public_conns = [c for c in connections if c.category == SocketCategory.REMOTE_PUBLIC and c.status == "ESTABLISHED"]
+        if len(remote_public_conns) > 25:
+            anomalies.append({
+                "type": "HIGH_REMOTE_CONNECTION_COUNT",
+                "severity": "MEDIUM",
+                "detail": f"{len(remote_public_conns)} concurrent public remote socket connections active.",
+                "observed_value": len(remote_public_conns),
+            })
+
+        return anomalies
