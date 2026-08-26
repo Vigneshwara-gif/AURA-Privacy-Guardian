@@ -1,0 +1,24 @@
+{
+  "sensor_latency_ms": 57.26,
+  "process_intel_ms": 104.84,
+  "network_intel_ms": 1.45,
+  "baseline_latency_ms": 0.033,
+  "ml_inference_ms": 1342.46,
+  "correlation_latency_ms": 0.029,
+  "risk_eval_latency_ms": 0.029,
+  "sqlite_write_latency_ms": 0.23,
+  "scan_once_avg_ms": 175.86,
+  "scan_once_min_ms": 170.53,
+  "scan_once_max_ms": 180.03,
+  "rss_initial_mb": 182.19,
+  "rss_final_mb": 184.29,
+  "rss_growth_mb": 2.09,
+  "frontend_bundle_total_kb": 209.91,
+  "bundle_breakdown_kb": {
+    "index.html": 0.86,
+    "icons-C96VRAv_.js": 20.11,
+    "index-BepUh5vt.js": 54.56,
+    "index-SAnZXV56.css": 2.88,
+    "vendor-C11oYLG8.js": 131.5
+  }
+}

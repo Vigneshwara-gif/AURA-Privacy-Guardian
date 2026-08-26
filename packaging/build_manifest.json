@@ -1,0 +1,25 @@
+{
+  "app_name": "AURA Privacy Guardian",
+  "version": "2.0.0",
+  "build_timestamp": "2026-08-26T05:37:02.520769+00:00",
+  "platform": "Windows",
+  "architecture": "64bit",
+  "python_version": "3.14.3",
+  "packaging_type": "PyInstaller onedir + InnoSetup",
+  "entrypoints": {
+    "agent": "aura.entrypoints.agent_main",
+    "cli": "aura.entrypoints.cli_main"
+  },
+  "artifacts": {
+    "agent_main.py": {
+      "relpath": "aura\\entrypoints\\agent_main.py",
+      "sha256": "860c4d65dd82e2320ce056755fbe6073997be77bf0b9d1a1ff581083415053d9",
+      "size_bytes": 904
+    },
+    "index.html": {
+      "relpath": "web\\index.html",
+      "sha256": "bd1c214cf574ff62b6316feb6c86aa4c0dc955d6bf51880da439c598e1e672c2",
+      "size_bytes": 628
+    }
+  }
+}

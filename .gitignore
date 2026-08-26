@@ -1,9 +1,110 @@
+# ======================================================================
+# Python
+# ======================================================================
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+.eggs/
+build/
+dist/
+pip-wheel-metadata/
+
+# ======================================================================
+# Virtual environments
+# ======================================================================
 .venv/
 venv/
 env/
+ENV/
+
+# ======================================================================
+# Secrets and local configuration
+# ======================================================================
+#
+# .env can contain a database DSN with a password. It must never be committed.
+# .env.example is the committed template and is deliberately NOT ignored.
+.env
+.env.*
+!.env.example
 .streamlit/secrets.toml
+
+# ======================================================================
+# AURA runtime data — real telemetry about a real machine
+# ======================================================================
+#
+# This is the privacy-critical section. AURA's event store records process
+# names, remote endpoint addresses and file inventories from the host it runs
+# on. Committing any of it publishes a profile of that machine.
+#
+# .aura-dev/ is the repository-local user-data root used when AURA_DEV_MODE=1.
+.aura-dev/
 data/system_logs.csv
 data/baseline.csv
+data/*.db
+data/*.sqlite
+data/*.sqlite3
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+
+# Rotating application logs, including the numbered backups RotatingFileHandler
+# creates (aura.log.1, aura.log.2, ...).
+logs/
 *.log
+*.log.[0-9]*
+
+# Trained model artifacts. Excluded because a model is derived from one
+# machine's baseline: committing it would ship another host's behavioural
+# profile and would be silently wrong for anyone else.
+models/
+*.joblib
+*.pkl
+
+# Generated reports and exports.
+reports/
+
+# ======================================================================
+# Tooling caches
+# ======================================================================
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.hypothesis/
+
+# ======================================================================
+# Frontend (added in a later batch)
+# ======================================================================
+node_modules/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+
+# ======================================================================
+# Editors and OS
+# ======================================================================
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+.idea/
+*.swp
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# Secrets and local runtime data
+.env
+.env.*
+!.env.example
+*.db
+*.db-shm
+*.db-wal
+

@@ -1,249 +1,456 @@
+"""
+AURA — application entry point.
+
+Run with::
+
+    streamlit run app.py
+
+This module is deliberately thin. It does five things and nothing else:
+configure the page, inject the stylesheet, render the sidebar, gather one
+telemetry context for this script run, and hand that context to whichever page
+is selected. All measurement lives in the engine modules (``aura_core``,
+``sensors``, ``privacy_monitor``, ``model``, ``logger``) and all rendering lives
+in ``aura_ui``. Nothing in this file measures, scores or decides anything.
+
+Three ordering decisions here are load-bearing and should not be rearranged
+casually.
+
+``st.set_page_config`` must run before any other Streamlit command, so it comes
+immediately after the imports. None of the imported modules emit a Streamlit
+command at import time — they only define functions and register caches — so
+importing them first is safe.
+
+The model is loaded *before* the sidebar is drawn. If the baseline is missing,
+``load_model_or_stop`` reports that and halts; doing so outside the sidebar puts
+the explanation in the main area where it is readable, rather than squeezed into
+a 300-pixel column.
+
+The telemetry context is assembled *once*, between the sidebar's controls and
+the sidebar's status readout. That ordering means the status figures in the
+sidebar and the figures on the page body come from the same instant. A
+monitoring tool that contradicts itself between its own sidebar and its own
+charts is not trusted again, and the only way to guarantee it cannot is to read
+once and share the result.
+"""
+
 from __future__ import annotations
 
-from pathlib import Path
-
-import pandas as pd
 import streamlit as st
 
-from aura_core import get_or_create_baseline, scan_once, train_aura_model
-from logger import load_logs
+from aura_ui import components as ui
+from aura_ui import core, scan
+from aura_ui.context import Context
+from aura_ui.pages import PAGES, render_page
+from aura_ui.theme import PALETTE, SEVERITY_STYLES, inject_theme
+
+# ----------------------------------------------------------------------
+# Page configuration — must precede every other Streamlit call.
+# ----------------------------------------------------------------------
 
 st.set_page_config(
-    page_title="AURA Privacy Guardian",
+    page_title="AURA — Privacy Intelligence",
     page_icon="🛡️",
     layout="wide",
+    initial_sidebar_state="expanded",
 )
 
-st.markdown(
+inject_theme()
+
+
+# ======================================================================
+# Sidebar building blocks
+# ======================================================================
+
+
+def _brand() -> None:
+    """The product mark at the top of the sidebar."""
+    st.sidebar.markdown(
+        "".join(
+            [
+                '<div class="aura-brand">',
+                '<div class="aura-brand-mark">◈</div>',
+                "<div>",
+                '<div class="aura-brand-name">',
+                ui.esc(core.APP_NAME, "AURA"),
+                "</div>",
+                '<div class="aura-brand-tag">Privacy Guardian</div>',
+                "</div></div>",
+            ]
+        ),
+        unsafe_allow_html=True,
+    )
+
+
+def _side_label(text: str) -> None:
+    """A small uppercase group heading in the sidebar."""
+    st.sidebar.markdown(
+        '<div class="aura-side-label">' + ui.esc(text, "") + "</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _side_stats(rows: list[tuple[str, str]]) -> None:
+    """A compact key/value block in the sidebar."""
+    if not rows:
+        return
+    markup = ['<div class="aura-card" style="padding:6px 10px">']
+    for key, value in rows:
+        markup.append(
+            "".join(
+                [
+                    '<div class="aura-side-stat">',
+                    '<span class="aura-side-stat-key">',
+                    ui.esc(key, ""),
+                    "</span>",
+                    '<span class="aura-side-stat-val">',
+                    ui.esc(value, core.UNKNOWN),
+                    "</span></div>",
+                ]
+            )
+        )
+    markup.append("</div>")
+    st.sidebar.markdown("".join(markup), unsafe_allow_html=True)
+
+
+def _side_badge(markup: str) -> None:
+    """Centre a badge on its own row in the sidebar."""
+    st.sidebar.markdown(
+        '<div style="padding:2px 4px 6px 4px">' + markup + "</div>",
+        unsafe_allow_html=True,
+    )
+
+
+NAV_GROUPS: list[tuple[str, list[tuple[str, str]]]] = [
+    (
+        "MONITOR",
+        [
+            ("overview", "◱  Overview"),
+            ("threats", "◆  Threat Center"),
+            ("system", "▤  System Monitor"),
+        ],
+    ),
+    (
+        "INTELLIGENCE",
+        [
+            ("process", "▦  Process Intelligence"),
+            ("network", "◈  Network Intelligence"),
+            ("privacy", "◉  Privacy Intelligence"),
+            ("behavioral", "◊  Behavioral Intelligence"),
+        ],
+    ),
+    (
+        "ANALYSIS",
+        [
+            ("events", "▧  Event Explorer"),
+            ("analytics", "◴  Analytics"),
+            ("reports", "▭  Reports"),
+        ],
+    ),
+    (
+        "SYSTEM",
+        [
+            ("settings", "⚙  Settings"),
+            ("about", "◇  About AURA"),
+        ],
+    ),
+]
+
+
+def _navigation() -> str:
+    """Render the 12-destination navigation organized by security domain."""
+    valid_keys = [spec.key for spec in PAGES]
+    current = st.session_state.get("aura_nav", "overview")
+    if current not in valid_keys:
+        current = valid_keys[0]
+        st.session_state["aura_nav"] = current
+
+    for group_title, items in NAV_GROUPS:
+        _side_label(group_title)
+        for key, label in items:
+            is_active = (current == key)
+            if st.sidebar.button(
+                label,
+                key=f"nav_{key}",
+                use_container_width=True,
+                type="primary" if is_active else "secondary",
+            ):
+                if current != key:
+                    st.session_state["aura_nav"] = key
+                    st.rerun()
+
+    return st.session_state.get("aura_nav", "overview")
+
+
+def _scan_controls(model: object) -> bool:
     """
-    <style>
-    .main { background: #f5f7fa; }
-    .aura-note {
-        padding: 12px 16px;
-        border-radius: 10px;
-        border: 1px solid #d9dee7;
-        background: white;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+    Render the scan controls. Returns True when the camera probe is enabled.
 
+    A scan runs during this script run, before the page body is assembled, so
+    the result it produces is the one the page renders.
+    """
+    _side_label("SECURITY SCAN")
 
-@st.cache_resource
-def load_model():
-    baseline = get_or_create_baseline()
-    return train_aura_model(baseline)
-
-
-st.title("🛡️ AURA Privacy Guardian")
-st.caption(
-    "Privacy-focused anomaly monitoring using Isolation Forest, LOF, "
-    "system activity indicators and network-behaviour heuristics."
-)
-
-with st.sidebar:
-    st.header("Controls")
-
-    probe_camera = st.checkbox(
-        "Enable camera availability probe",
-        value=False,
-        help="Checks whether a camera can be opened. It does not prove another application is using it.",
+    camera_available = core.camera_dependency_present()
+    probe_camera = st.sidebar.checkbox(
+        "Include camera availability check",
+        key="aura_probe_camera",
+        disabled=not camera_available,
+        help=(
+            "Asks the operating system whether a capture device can be opened, "
+            "then releases it immediately. No image is captured, decoded, "
+            "displayed or stored."
+            if camera_available
+            else "Requires opencv-python, which is not installed. The check is "
+            "unavailable rather than silently reported as clear."
+        ),
     )
+    probe_camera = bool(probe_camera) and camera_available
 
-    if st.button("Retrain Detection Model", use_container_width=True):
-        load_model.clear()
-        st.rerun()
-
-    st.divider()
-    st.subheader("🧪 Demonstration Mode")
-    demo_mode = st.checkbox(
-        "Run simulated privacy-threat test",
-        value=False,
-        help="This is a safe synthetic test. It does not upload data or attack the system.",
-    )
-
-    st.info(
-        "AURA provides anomaly and risk indicators. "
-        "A 'potential data exfiltration' event means behaviour is suspicious; "
-        "it is not proof that data was actually stolen."
-    )
-
-try:
-    model = load_model()
-except Exception as exc:
-    st.error(f"Model initialization failed: {exc}")
-    st.stop()
-
-logs = load_logs()
-
-latest_anomaly = int(logs["Anomaly"].iloc[-1]) if not logs.empty else 0
-latest_risk = str(logs["Risk"].iloc[-1]) if not logs.empty else "NORMAL"
-total_anomalies = int(logs["Anomaly"].sum()) if not logs.empty else 0
-privacy_events = int(logs["Privacy_Event"].sum()) if not logs.empty and "Privacy_Event" in logs else 0
-exfil_events = int(logs["Potential_Data_Exfiltration"].sum()) if not logs.empty and "Potential_Data_Exfiltration" in logs else 0
-
-c1, c2, c3, c4 = st.columns(4)
-
-with c1:
-    st.metric("Current Protection", "ALERT" if latest_anomaly else "PROTECTED")
-
-with c2:
-    st.metric("Total Anomalies", total_anomalies)
-
-with c3:
-    st.metric("Privacy Events", privacy_events)
-
-with c4:
-    st.metric("Current Risk", latest_risk)
-
-st.divider()
-
-st.subheader("🔎 Live Privacy Scan")
-
-if demo_mode:
-    st.warning(
-        "DEMO MODE: synthetic abnormal CPU/network activity is used only to "
-        "demonstrate the detection pipeline."
-    )
-
-if st.button("Run AURA Scan", type="primary", use_container_width=True):
-    synthetic = (
-        {"CPU": 96.0, "Net": 5000.0, "Cam": 0}
-        if demo_mode
-        else None
-    )
-
-    with st.spinner("Collecting indicators and running anomaly detection..."):
-        result = scan_once(model, probe_camera=probe_camera, synthetic=synthetic)
-
-    if result["risk"] == "HIGH":
-        st.error("🚨 HIGH RISK — multiple suspicious indicators detected.")
-    elif result["risk"] == "MEDIUM":
-        st.warning("⚠️ MEDIUM RISK — unusual activity requires attention.")
-    else:
-        st.success("✅ NORMAL — no significant anomaly detected.")
-
-    if result["potential_data_exfiltration"]:
-        st.error(
-            "📤 POTENTIAL DATA-EXFILTRATION PATTERN: unusually high outbound "
-            "activity combined with other suspicious indicators."
+    if not camera_available:
+        st.sidebar.caption(
+            "Camera check unavailable — opencv-python is not installed."
         )
 
-    m1, m2, m3, m4 = st.columns(4)
-    m1.metric("CPU", f"{result['CPU']:.1f}%")
-    m2.metric("Outbound Rate", f"{result['Net']:.2f} KB/s")
-    m3.metric("Processes", result["Process_Count"])
-    m4.metric("Remote Connections", result["Remote_Connections"])
-
-    m5, m6, m7, m8 = st.columns(4)
-    m5.metric("Camera", result["camera_status"])
-    m6.metric("Sensitive Files", result["Sensitive_Files"])
-    m7.metric("IF", "ANOMALY" if result["if_anomaly"] else "NORMAL")
-    m8.metric("LOF", "ANOMALY" if result["lof_anomaly"] else "NORMAL")
-
-    st.write("**Why AURA flagged this event:**")
-    for reason in result["reasons"]:
-        st.write(f"• {reason}")
-
-    st.caption(
-        f"Risk score: {result['risk_score']} | "
-        f"IF score: {result['if_score']} | LOF score: {result['lof_score']}"
+    run_live = ui.full_width(
+        st.sidebar.button,
+        "▶  Run Security Scan",
+        key="aura_run_live",
+        type="primary",
+        help="Collects live host telemetry (CPU, Memory, Disk, Network, Process table) and runs AI detection.",
+    )
+    run_demo = ui.full_width(
+        st.sidebar.button,
+        "▣  Demonstration Scan (Synthetic)",
+        key="aura_run_demo",
+        help="Evaluates synthetic abnormal values to demonstrate anomaly detection. Never written to logs.",
     )
 
-st.divider()
+    if run_live:
+        with st.spinner("Collecting live telemetry from this computer…"):
+            try:
+                result = scan.run_scan(model, probe_camera=probe_camera)
+            except Exception as exc:  # noqa: BLE001 - surfaced, never hidden
+                st.session_state["aura_scan_error"] = str(exc)
+            else:
+                st.session_state.pop("aura_scan_error", None)
+                scan.store_result(result, is_demo=False)
+        core.bump_refresh()
 
-st.subheader("🕵️ Privacy Indicators")
+    elif run_demo:
+        with st.spinner("Running the synthetic demonstration scan…"):
+            try:
+                result = scan.run_scan(
+                    model,
+                    probe_camera=False,
+                    synthetic=scan.DEMO_PROFILE,
+                )
+            except Exception as exc:  # noqa: BLE001 - surfaced, never hidden
+                st.session_state["aura_scan_error"] = str(exc)
+            else:
+                st.session_state.pop("aura_scan_error", None)
+                scan.store_result(result, is_demo=True)
+        core.bump_refresh()
 
-p1, p2, p3 = st.columns(3)
-
-if logs.empty:
-    current_processes = 0
-    current_remote = 0
-    current_sensitive = 0
-else:
-    current_processes = int(logs["Process_Count"].iloc[-1])
-    current_remote = int(logs["Remote_Connections"].iloc[-1])
-    current_sensitive = int(logs["Sensitive_Files"].iloc[-1])
-
-with p1:
-    st.metric("Running Processes", current_processes)
-
-with p2:
-    st.metric("Remote Connections", current_remote)
-
-with p3:
-    st.metric("Sensitive-looking Files", current_sensitive)
-
-st.caption(
-    "Sensitive-file count is an inventory indicator based on common user folders "
-    "and file extensions. AURA does not read file contents and does not claim a file was leaked."
-)
-
-st.divider()
-
-st.subheader("📈 Activity Monitoring")
-
-logs = load_logs()
-
-if logs.empty:
-    st.info("No monitoring events recorded yet. Click 'Run AURA Scan' above.")
-else:
-    chart_col1, chart_col2 = st.columns(2)
-
-    chart_data = logs.tail(50).copy()
-
-    with chart_col1:
-        st.markdown("**CPU Usage (%)**")
-        st.line_chart(chart_data.set_index("Timestamp")["CPU"])
-
-    with chart_col2:
-        st.markdown("**Outbound Network Rate (KB/s)**")
-        st.line_chart(chart_data.set_index("Timestamp")["Net"])
-
-    st.markdown("**Process Count**")
-    st.line_chart(chart_data.set_index("Timestamp")["Process_Count"])
-
-    st.markdown("**Remote Connection Count**")
-    st.line_chart(chart_data.set_index("Timestamp")["Remote_Connections"])
-
-    st.subheader("🚨 Recent Security Events")
-
-    display_cols = [
-        "Timestamp", "CPU", "Net", "Cam", "Process_Count",
-        "Remote_Connections", "IF_Anomaly", "LOF_Anomaly",
-        "Anomaly", "Risk", "Risk_Score", "Network_Level",
-        "Privacy_Event", "Potential_Data_Exfiltration",
-    ]
-    available = [c for c in display_cols if c in logs.columns]
-
-    st.dataframe(
-        logs[available].tail(20).iloc[::-1],
-        use_container_width=True,
-        hide_index=True,
+    st.sidebar.caption(
+        "Demonstration scan feeds synthetic values to test detector response. "
+        "It is clearly marked and quarantined from production logs."
     )
 
-st.divider()
+    return probe_camera
 
-st.subheader("ℹ️ What AURA Can and Cannot Claim")
 
-st.markdown(
+def _session_controls() -> None:
+    """Maintenance actions, kept out of the way but genuinely wired up."""
+    with st.sidebar.expander("Session", expanded=False):
+        if st.button("Clear result from this session", key="aura_clear"):
+            for key in (
+                "latest_result",
+                "latest_scan_source",
+                "last_scan_time",
+                "aura_scan_error",
+                "aura_demo_restore_failed",
+            ):
+                st.session_state.pop(key, None)
+            core.bump_refresh()
+            st.rerun()
+        st.caption(
+            "Discards the on-screen result only. The monitoring log on disk is "
+            "not touched."
+        )
+
+        if st.button("Retrain detection model", key="aura_retrain"):
+            core.reset_model_cache()
+            st.rerun()
+        st.caption(
+            "Refits the Isolation Forest and Local Outlier Factor from the "
+            "stored baseline. Useful after the baseline has been extended."
+        )
+
+        if st.button("Refresh live telemetry", key="aura_refresh_all"):
+            core.bump_refresh()
+            st.rerun()
+        st.caption(
+            "Invalidates the few-second telemetry cache and re-reads every "
+            "sensor."
+        )
+
+
+def _status_readout(ctx: Context) -> None:
+    """The sidebar's live status block, drawn from the shared context."""
+    _side_label("Status")
+
+    if not ctx.has_result:
+        _side_badge(
+            ui.badge("STANDBY", PALETTE["blue"], PALETTE["blue_soft"], "○")
+        )
+    elif ctx.is_demo:
+        _side_badge(
+            ui.badge(
+                "DEMONSTRATION",
+                PALETTE["violet"],
+                "rgba(122, 108, 208, 0.16)",
+                "▣",
+            )
+        )
+    else:
+        _side_badge(
+            ui.badge("MONITORING", PALETTE["green"], PALETTE["green_soft"], "●")
+        )
+
+    rollup_status = core.safe_text(
+        (ctx.rollup or {}).get("status"), "UNAVAILABLE"
+    )
+    _side_badge(ui.status_badge(rollup_status))
+
+    if ctx.has_result:
+        severity = core.severity_of(ctx.result, "UNKNOWN")
+        style = SEVERITY_STYLES.get(severity, SEVERITY_STYLES["UNKNOWN"])
+        risk = (
+            core.fmt_float(ctx.result.get("Risk_Score"), 0)
+            + " / "
+            + str(core.RISK_SCORE_NOMINAL_MAX)
+        )
+        verdict = core.safe_text(style.get("label"), severity)
+    else:
+        risk = "Not measured"
+        verdict = "No scan yet"
+
+    _side_stats(
+        [
+            ("Risk score", risk),
+            ("Verdict", verdict),
+            ("Last scan", core.fmt_relative(ctx.scan_time, "Never")),
+            (
+                "Sensors",
+                str(core.safe_int((ctx.rollup or {}).get("healthy"), 0))
+                + " / "
+                + str(core.safe_int((ctx.rollup or {}).get("assessed"), 0)),
+            ),
+            ("Stored events", core.fmt_int(ctx.history_rows)),
+        ]
+    )
+
+
+def _footer() -> None:
+    """The standing disclaimer, present on every screen."""
+    st.sidebar.markdown(
+        "".join(
+            [
+                '<div class="aura-side-note">',
+                "<strong>Defensive monitoring only.</strong> AURA observes this "
+                "computer, reports what it measured and explains what it "
+                "cannot conclude. It takes no action against the host, sends "
+                "nothing off the machine, and never displays a value it has "
+                "not actually measured.",
+                "</div>",
+            ]
+        ),
+        unsafe_allow_html=True,
+    )
+    st.sidebar.markdown(
+        '<div style="padding:10px 4px 4px 4px;font-size:0.66rem;'
+        "letter-spacing:0.08em;text-transform:uppercase;color:"
+        + PALETTE["text_faint"]
+        + '">'
+        + ui.esc(core.APP_NAME, "AURA")
+        + " v"
+        + ui.esc(core.APP_VERSION, "")
+        + "  ·  Local build</div>",
+        unsafe_allow_html=True,
+    )
+
+
+# ======================================================================
+# Context assembly
+# ======================================================================
+
+
+def _build_context(model: object, probe_camera: bool) -> Context:
     """
-    **AURA can identify:**
-    - unusual CPU/network behaviour;
-    - statistical anomalies using Isolation Forest and LOF;
-    - unusually high outbound activity;
-    - process-count and remote-connection deviations;
-    - potential data-exfiltration patterns based on combined indicators.
+    Read every source once and bundle it.
 
-    **AURA does not currently prove:**
-    - that a specific file was stolen;
-    - which exact application leaked data;
-    - that a camera is being secretly accessed by another application;
-    - that malware or spyware is present.
-
-    These limitations are intentional so that the system's results remain technically defensible.
+    Each read is individually cached for a few seconds inside ``core``, so a
+    page that touches all of them costs one set of reads per interaction rather
+    than one per call site.
     """
-)
+    snapshot = core.live_snapshot(probe_camera=probe_camera)
+    connections = core.live_connections()
+    health = core.derive_sensor_health(
+        snapshot,
+        probe_camera=probe_camera,
+        connections=connections,
+    )
 
-st.caption("AURA Privacy Guardian • Academic Project Prototype")
+    return Context(
+        model=model,
+        probe_camera=probe_camera,
+        result=core.get_latest_result(),
+        is_demo=core.result_is_demo(),
+        scan_time=core.get_last_scan_time(),
+        logs=core.load_event_log(),
+        snapshot=snapshot,
+        processes=core.live_processes(),
+        connections=connections,
+        health=health,
+        rollup=core.health_rollup(health),
+    )
+
+
+# ======================================================================
+# Main
+# ======================================================================
+
+
+def main() -> None:
+    """Assemble the shell and render the selected page."""
+    # Initialize session state keys early before widget instantiations
+    st.session_state.setdefault("aura_probe_camera", False)
+
+    with st.spinner("Preparing the detection model…"):
+        # Halts with an actionable message if the baseline is unusable. No
+        # fallback "everything is fine" state is invented in its place.
+        model = core.load_model_or_stop()
+
+    _brand()
+    page_key = _navigation()
+    probe_camera = _scan_controls(model)
+    _session_controls()
+
+    ctx = _build_context(model, probe_camera)
+
+    _status_readout(ctx)
+    _footer()
+
+    scan_error = st.session_state.get("aura_scan_error")
+    if scan_error:
+        ui.error_state(
+            "The last scan did not complete",
+            "AURA could not finish the requested scan, so no new result was "
+            "recorded. Anything shown below is from an earlier scan or from "
+            "stored history. Underlying error: " + str(scan_error),
+        )
+
+    render_page(page_key, ctx)
+
+
+main()

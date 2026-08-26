@@ -1,0 +1,453 @@
+import { createHotContext as __vite__createHotContext } from "/@vite/client";import.meta.hot = __vite__createHotContext("/src/features/threats/ThreatIntelligenceView.tsx");import __vite__cjsImport0_react_jsxDevRuntime from "/node_modules/.vite/deps/react_jsx-dev-runtime.js?v=636a7c41"; const jsxDEV = __vite__cjsImport0_react_jsxDevRuntime["jsxDEV"];
+import * as RefreshRuntime from "/@react-refresh";
+const inWebWorker = typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope;
+let prevRefreshReg;
+let prevRefreshSig;
+if (import.meta.hot && !inWebWorker) {
+  if (!window.$RefreshReg$) {
+    throw new Error(
+      "@vitejs/plugin-react can't detect preamble. Something is wrong."
+    );
+  }
+  prevRefreshReg = window.$RefreshReg$;
+  prevRefreshSig = window.$RefreshSig$;
+  window.$RefreshReg$ = RefreshRuntime.getRefreshReg("C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx");
+  window.$RefreshSig$ = RefreshRuntime.createSignatureFunctionForTransform;
+}
+var _s = $RefreshSig$();
+import { CheckCircle2, ShieldAlert } from "/node_modules/.vite/deps/lucide-react.js?v=636a7c41";
+import { RadialGauge } from "/src/components/ui/RadialGauge.tsx";
+import { useStream } from "/src/context/StreamContext.tsx?t=1787728143501";
+export const ThreatIntelligenceView = () => {
+  _s();
+  const { currentRisk } = useStream();
+  const evidence = currentRisk?.evidence || [];
+  const riskScore = currentRisk?.risk_score || 0;
+  const severity = currentRisk?.severity || "NORMAL";
+  const reasons = currentRisk?.reasons || [];
+  const totalWeight = evidence.reduce((acc, e) => acc + (e.weight || 0), 0);
+  return /* @__PURE__ */ jsxDEV("div", { style: { display: "flex", flexDirection: "column", gap: "var(--space-6)" }, children: [
+    /* @__PURE__ */ jsxDEV(
+      "div",
+      {
+        style: {
+          padding: "var(--space-5) var(--space-6)",
+          backgroundColor: "var(--bg-surface)",
+          borderRadius: "var(--radius-lg)",
+          border: "1px solid var(--border-subtle)",
+          display: "flex",
+          flexDirection: "column",
+          gap: "8px"
+        },
+        children: [
+          /* @__PURE__ */ jsxDEV("div", { style: { display: "flex", alignItems: "center", gap: "8px" }, children: [
+            /* @__PURE__ */ jsxDEV(ShieldAlert, { size: 18, color: "var(--accent-primary)" }, void 0, false, {
+              fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+              lineNumber: 50,
+              columnNumber: 11
+            }, this),
+            /* @__PURE__ */ jsxDEV("span", { style: { fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.06em", color: "var(--text-muted)", textTransform: "uppercase" }, children: "BEHAVIORAL RISK ATTRIBUTION & EXPLAINABILITY" }, void 0, false, {
+              fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+              lineNumber: 51,
+              columnNumber: 11
+            }, this)
+          ] }, void 0, true, {
+            fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+            lineNumber: 49,
+            columnNumber: 9
+          }, this),
+          /* @__PURE__ */ jsxDEV("p", { style: { fontSize: "0.95rem", fontWeight: 600, color: "var(--text-primary)", margin: 0, lineHeight: 1.5 }, children: reasons.length > 0 ? reasons.join(". ") : "Host metrics are operating within verified statistical baseline envelopes. Zero behavioral anomalies detected." }, void 0, false, {
+            fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+            lineNumber: 55,
+            columnNumber: 9
+          }, this)
+        ]
+      },
+      void 0,
+      true,
+      {
+        fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+        lineNumber: 38,
+        columnNumber: 7
+      },
+      this
+    ),
+    /* @__PURE__ */ jsxDEV("div", { style: { display: "grid", gridTemplateColumns: "320px 1fr", gap: "var(--space-5)" }, children: [
+      /* @__PURE__ */ jsxDEV(
+        "div",
+        {
+          style: {
+            padding: "var(--space-5)",
+            backgroundColor: "var(--bg-surface)",
+            borderRadius: "var(--radius-lg)",
+            border: "1px solid var(--border-subtle)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            textAlign: "center"
+          },
+          children: [
+            /* @__PURE__ */ jsxDEV("span", { style: { fontSize: "0.75rem", fontWeight: 700, letterSpacing: "0.06em", color: "var(--text-muted)", textTransform: "uppercase", marginBottom: "16px" }, children: "COMPOSITE RISK ENVELOPE" }, void 0, false, {
+              fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+              lineNumber: 78,
+              columnNumber: 11
+            }, this),
+            /* @__PURE__ */ jsxDEV(RadialGauge, { value: riskScore, severity, size: 150 }, void 0, false, {
+              fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+              lineNumber: 81,
+              columnNumber: 11
+            }, this),
+            /* @__PURE__ */ jsxDEV("div", { style: { marginTop: "14px" }, children: [
+              /* @__PURE__ */ jsxDEV("span", { style: { fontSize: "1.2rem", fontWeight: 800, color: "var(--text-primary)" }, children: [
+                severity,
+                " SEVERITY"
+              ] }, void 0, true, {
+                fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                lineNumber: 83,
+                columnNumber: 13
+              }, this),
+              /* @__PURE__ */ jsxDEV("p", { style: { fontSize: "0.8rem", color: "var(--text-muted)", margin: "4px 0 0 0" }, children: "Deterministic 0–100 bounded score" }, void 0, false, {
+                fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                lineNumber: 86,
+                columnNumber: 13
+              }, this)
+            ] }, void 0, true, {
+              fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+              lineNumber: 82,
+              columnNumber: 11
+            }, this)
+          ]
+        },
+        void 0,
+        true,
+        {
+          fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+          lineNumber: 65,
+          columnNumber: 9
+        },
+        this
+      ),
+      /* @__PURE__ */ jsxDEV(
+        "div",
+        {
+          style: {
+            padding: "var(--space-5)",
+            backgroundColor: "var(--bg-surface)",
+            borderRadius: "var(--radius-lg)",
+            border: "1px solid var(--border-subtle)",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between"
+          },
+          children: [
+            /* @__PURE__ */ jsxDEV("div", { children: [
+              /* @__PURE__ */ jsxDEV("div", { style: { display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }, children: [
+                /* @__PURE__ */ jsxDEV("span", { style: { fontSize: "0.82rem", fontWeight: 700, letterSpacing: "0.04em", color: "var(--text-primary)", textTransform: "uppercase" }, children: "SIGNAL RISK WEIGHT CONTRIBUTIONS" }, void 0, false, {
+                  fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                  lineNumber: 106,
+                  columnNumber: 15
+                }, this),
+                /* @__PURE__ */ jsxDEV("span", { style: { fontSize: "0.75rem", color: "var(--text-muted)" }, children: [
+                  evidence.length,
+                  " active contributors"
+                ] }, void 0, true, {
+                  fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                  lineNumber: 109,
+                  columnNumber: 15
+                }, this)
+              ] }, void 0, true, {
+                fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                lineNumber: 105,
+                columnNumber: 13
+              }, this),
+              /* @__PURE__ */ jsxDEV("div", { style: { display: "flex", flexDirection: "column", gap: "10px" }, children: evidence.length > 0 ? evidence.map((e, idx) => {
+                const percent = totalWeight > 0 ? Math.round(e.weight / totalWeight * 100) : 0;
+                return /* @__PURE__ */ jsxDEV("div", { style: { display: "flex", flexDirection: "column", gap: "4px" }, children: [
+                  /* @__PURE__ */ jsxDEV("div", { style: { display: "flex", justifyContent: "space-between", fontSize: "0.82rem" }, children: [
+                    /* @__PURE__ */ jsxDEV("span", { style: { fontWeight: 600, color: "var(--text-primary)" }, children: e.signal }, void 0, false, {
+                      fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                      lineNumber: 121,
+                      columnNumber: 25
+                    }, this),
+                    /* @__PURE__ */ jsxDEV("span", { style: { color: "var(--text-muted)", fontFamily: "var(--font-mono)" }, className: "tabular-nums", children: [
+                      "+",
+                      e.weight,
+                      " pts (",
+                      percent,
+                      "%)"
+                    ] }, void 0, true, {
+                      fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                      lineNumber: 122,
+                      columnNumber: 25
+                    }, this)
+                  ] }, void 0, true, {
+                    fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                    lineNumber: 120,
+                    columnNumber: 23
+                  }, this),
+                  /* @__PURE__ */ jsxDEV("div", { style: { height: "6px", backgroundColor: "var(--bg-surface-subtle)", borderRadius: "var(--radius-full)", overflow: "hidden" }, children: /* @__PURE__ */ jsxDEV(
+                    "div",
+                    {
+                      style: {
+                        height: "100%",
+                        width: `${percent}%`,
+                        backgroundColor: "var(--accent-primary)",
+                        borderRadius: "var(--radius-full)"
+                      }
+                    },
+                    void 0,
+                    false,
+                    {
+                      fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                      lineNumber: 127,
+                      columnNumber: 25
+                    },
+                    this
+                  ) }, void 0, false, {
+                    fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                    lineNumber: 126,
+                    columnNumber: 23
+                  }, this)
+                ] }, idx, true, {
+                  fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                  lineNumber: 119,
+                  columnNumber: 19
+                }, this);
+              }) : /* @__PURE__ */ jsxDEV("div", { style: { display: "flex", alignItems: "center", gap: "8px", padding: "24px 0", color: "var(--text-muted)", fontSize: "0.85rem" }, children: [
+                /* @__PURE__ */ jsxDEV(CheckCircle2, { size: 16, color: "var(--severity-low)" }, void 0, false, {
+                  fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                  lineNumber: 141,
+                  columnNumber: 19
+                }, this),
+                /* @__PURE__ */ jsxDEV("span", { children: "Zero active anomaly contributors. Host behavior is within normal variance." }, void 0, false, {
+                  fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                  lineNumber: 142,
+                  columnNumber: 19
+                }, this)
+              ] }, void 0, true, {
+                fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                lineNumber: 140,
+                columnNumber: 15
+              }, this) }, void 0, false, {
+                fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                lineNumber: 114,
+                columnNumber: 13
+              }, this)
+            ] }, void 0, true, {
+              fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+              lineNumber: 104,
+              columnNumber: 11
+            }, this),
+            /* @__PURE__ */ jsxDEV(
+              "div",
+              {
+                style: {
+                  marginTop: "16px",
+                  padding: "10px 14px",
+                  backgroundColor: "var(--bg-surface-subtle)",
+                  borderRadius: "var(--radius-md)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  fontSize: "0.78rem"
+                },
+                children: [
+                  /* @__PURE__ */ jsxDEV("span", { style: { color: "var(--text-secondary)" }, children: [
+                    "Provenance: ",
+                    /* @__PURE__ */ jsxDEV("strong", { style: { color: "var(--text-primary)" }, children: "Continuous Sensor Collector" }, void 0, false, {
+                      fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                      lineNumber: 161,
+                      columnNumber: 27
+                    }, this)
+                  ] }, void 0, true, {
+                    fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                    lineNumber: 160,
+                    columnNumber: 13
+                  }, this),
+                  /* @__PURE__ */ jsxDEV("span", { style: { color: "var(--text-secondary)" }, children: [
+                    "Attribution Model: ",
+                    /* @__PURE__ */ jsxDEV("strong", { style: { color: "var(--text-primary)" }, children: "IsolationForest + LOF" }, void 0, false, {
+                      fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                      lineNumber: 164,
+                      columnNumber: 34
+                    }, this)
+                  ] }, void 0, true, {
+                    fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                    lineNumber: 163,
+                    columnNumber: 13
+                  }, this)
+                ]
+              },
+              void 0,
+              true,
+              {
+                fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                lineNumber: 148,
+                columnNumber: 11
+              },
+              this
+            )
+          ]
+        },
+        void 0,
+        true,
+        {
+          fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+          lineNumber: 93,
+          columnNumber: 9
+        },
+        this
+      )
+    ] }, void 0, true, {
+      fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+      lineNumber: 63,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV(
+      "div",
+      {
+        style: {
+          padding: "var(--space-5)",
+          backgroundColor: "var(--bg-surface)",
+          borderRadius: "var(--radius-lg)",
+          border: "1px solid var(--border-subtle)",
+          display: "flex",
+          flexDirection: "column",
+          gap: "12px"
+        },
+        children: [
+          /* @__PURE__ */ jsxDEV("span", { style: { fontSize: "0.82rem", fontWeight: 700, letterSpacing: "0.04em", color: "var(--text-primary)", textTransform: "uppercase" }, children: "INTELLIGENCE REASONING CHAIN" }, void 0, false, {
+            fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+            lineNumber: 182,
+            columnNumber: 9
+          }, this),
+          /* @__PURE__ */ jsxDEV("div", { style: { display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px" }, children: [
+            /* @__PURE__ */ jsxDEV("div", { style: { padding: "12px", backgroundColor: "var(--bg-surface-subtle)", borderRadius: "var(--radius-md)" }, children: [
+              /* @__PURE__ */ jsxDEV("span", { style: { fontSize: "0.68rem", color: "var(--accent-primary)", fontWeight: 700 }, children: "01. OBSERVATION" }, void 0, false, {
+                fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                lineNumber: 188,
+                columnNumber: 13
+              }, this),
+              /* @__PURE__ */ jsxDEV("div", { style: { fontSize: "0.85rem", fontWeight: 600, color: "var(--text-primary)", marginTop: "4px" }, children: "Host Telemetry Sampling" }, void 0, false, {
+                fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                lineNumber: 189,
+                columnNumber: 13
+              }, this),
+              /* @__PURE__ */ jsxDEV("p", { style: { fontSize: "0.74rem", color: "var(--text-muted)", marginTop: "4px", margin: 0 }, children: "CPU, RAM, Socket flows, Process tables sampled every 5s." }, void 0, false, {
+                fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                lineNumber: 192,
+                columnNumber: 13
+              }, this)
+            ] }, void 0, true, {
+              fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+              lineNumber: 187,
+              columnNumber: 11
+            }, this),
+            /* @__PURE__ */ jsxDEV("div", { style: { padding: "12px", backgroundColor: "var(--bg-surface-subtle)", borderRadius: "var(--radius-md)" }, children: [
+              /* @__PURE__ */ jsxDEV("span", { style: { fontSize: "0.68rem", color: "var(--accent-primary)", fontWeight: 700 }, children: "02. BASELINE CHECK" }, void 0, false, {
+                fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                lineNumber: 198,
+                columnNumber: 13
+              }, this),
+              /* @__PURE__ */ jsxDEV("div", { style: { fontSize: "0.85rem", fontWeight: 600, color: "var(--text-primary)", marginTop: "4px" }, children: "Statistical Deviation" }, void 0, false, {
+                fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                lineNumber: 199,
+                columnNumber: 13
+              }, this),
+              /* @__PURE__ */ jsxDEV("p", { style: { fontSize: "0.74rem", color: "var(--text-muted)", marginTop: "4px", margin: 0 }, children: "Rolling mean and variance comparison against known envelopes." }, void 0, false, {
+                fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                lineNumber: 202,
+                columnNumber: 13
+              }, this)
+            ] }, void 0, true, {
+              fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+              lineNumber: 197,
+              columnNumber: 11
+            }, this),
+            /* @__PURE__ */ jsxDEV("div", { style: { padding: "12px", backgroundColor: "var(--bg-surface-subtle)", borderRadius: "var(--radius-md)" }, children: [
+              /* @__PURE__ */ jsxDEV("span", { style: { fontSize: "0.68rem", color: "var(--accent-primary)", fontWeight: 700 }, children: "03. ML SCORING" }, void 0, false, {
+                fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                lineNumber: 208,
+                columnNumber: 13
+              }, this),
+              /* @__PURE__ */ jsxDEV("div", { style: { fontSize: "0.85rem", fontWeight: 600, color: "var(--text-primary)", marginTop: "4px" }, children: "Signal Weight Aggregation" }, void 0, false, {
+                fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                lineNumber: 209,
+                columnNumber: 13
+              }, this),
+              /* @__PURE__ */ jsxDEV("p", { style: { fontSize: "0.74rem", color: "var(--text-muted)", marginTop: "4px", margin: 0 }, children: "Isolation Forest score calculation with bounded weights." }, void 0, false, {
+                fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                lineNumber: 212,
+                columnNumber: 13
+              }, this)
+            ] }, void 0, true, {
+              fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+              lineNumber: 207,
+              columnNumber: 11
+            }, this),
+            /* @__PURE__ */ jsxDEV("div", { style: { padding: "12px", backgroundColor: "var(--bg-surface-subtle)", borderRadius: "var(--radius-md)" }, children: [
+              /* @__PURE__ */ jsxDEV("span", { style: { fontSize: "0.68rem", color: "var(--severity-low)", fontWeight: 700 }, children: "04. ENFORCEMENT" }, void 0, false, {
+                fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                lineNumber: 218,
+                columnNumber: 13
+              }, this),
+              /* @__PURE__ */ jsxDEV("div", { style: { fontSize: "0.85rem", fontWeight: 600, color: "var(--text-primary)", marginTop: "4px" }, children: "Incident Deduplication" }, void 0, false, {
+                fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                lineNumber: 219,
+                columnNumber: 13
+              }, this),
+              /* @__PURE__ */ jsxDEV("p", { style: { fontSize: "0.74rem", color: "var(--text-muted)", marginTop: "4px", margin: 0 }, children: "Actionable notifications dispatched without alert spam." }, void 0, false, {
+                fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+                lineNumber: 222,
+                columnNumber: 13
+              }, this)
+            ] }, void 0, true, {
+              fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+              lineNumber: 217,
+              columnNumber: 11
+            }, this)
+          ] }, void 0, true, {
+            fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+            lineNumber: 186,
+            columnNumber: 9
+          }, this)
+        ]
+      },
+      void 0,
+      true,
+      {
+        fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+        lineNumber: 171,
+        columnNumber: 7
+      },
+      this
+    )
+  ] }, void 0, true, {
+    fileName: "C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx",
+    lineNumber: 36,
+    columnNumber: 5
+  }, this);
+};
+_s(ThreatIntelligenceView, "Tbv/Y3DdrC1i9ug2E7icIyohA4k=", false, function() {
+  return [useStream];
+});
+_c = ThreatIntelligenceView;
+var _c;
+$RefreshReg$(_c, "ThreatIntelligenceView");
+if (import.meta.hot && !inWebWorker) {
+  window.$RefreshReg$ = prevRefreshReg;
+  window.$RefreshSig$ = prevRefreshSig;
+}
+if (import.meta.hot && !inWebWorker) {
+  RefreshRuntime.__hmr_import(import.meta.url).then((currentExports) => {
+    RefreshRuntime.registerExportsForReactRefresh("C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx", currentExports);
+    import.meta.hot.accept((nextExports) => {
+      if (!nextExports) return;
+      const invalidateMessage = RefreshRuntime.validateRefreshBoundaryAndEnqueueUpdate("C:/Users/VIGNESH/AURA/AURA-Privacy-Guardian/web/src/features/threats/ThreatIntelligenceView.tsx", currentExports, nextExports);
+      if (invalidateMessage) import.meta.hot.invalidate(invalidateMessage);
+    });
+  });
+}
+
+//# sourceMappingURL=data:application/json;base64,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O0FBQUE7QUFBQSxxQkFFQTtBQUFBLGlCQVBGO0FBQUE7QUFBQTtBQUFBO0FBQUEsbUJBUUE7QUFBQSxZQUVBLHVCQUFDLFNBQUksT0FBTyxFQUFFVixTQUFTLFFBQVFDLGlCQUFpQiw0QkFBNEJDLGNBQWMsbUJBQW1CLEdBQzNHO0FBQUEscUNBQUMsVUFBSyxPQUFPLEVBQUVHLFVBQVUsV0FBV0csT0FBTyx1QkFBdUJGLFlBQVksSUFBSSxHQUFHLCtCQUFyRjtBQUFBO0FBQUE7QUFBQTtBQUFBLHFCQUFvRztBQUFBLGNBQ3BHLHVCQUFDLFNBQUksT0FBTyxFQUFFRCxVQUFVLFdBQVdDLFlBQVksS0FBS0UsT0FBTyx1QkFBdUJVLFdBQVcsTUFBTSxHQUFHLHNDQUF0RztBQUFBO0FBQUE7QUFBQTtBQUFBLHFCQUVBO0FBQUEsY0FDQSx1QkFBQyxPQUFFLE9BQU8sRUFBRWIsVUFBVSxXQUFXRyxPQUFPLHFCQUFxQlUsV0FBVyxPQUFPUixRQUFRLEVBQUUsR0FBRyx1RUFBNUY7QUFBQTtBQUFBO0FBQUE7QUFBQSxxQkFFQTtBQUFBLGlCQVBGO0FBQUE7QUFBQTtBQUFBO0FBQUEsbUJBUUE7QUFBQSxlQXZDRjtBQUFBO0FBQUE7QUFBQTtBQUFBLGlCQXdDQTtBQUFBO0FBQUE7QUFBQSxNQXZERjtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUE7QUFBQTtBQUFBO0FBQUEsSUF3REE7QUFBQSxPQS9MRjtBQUFBO0FBQUE7QUFBQTtBQUFBLFNBZ01BO0FBRUo7QUFBRXpCLEdBN01XRCx3QkFBZ0M7QUFBQSxVQUNuQkQsU0FBUztBQUFBO0FBQUEsS0FEdEJDO0FBQWdDLElBQUE2QztBQUFBLGFBQUFBLElBQUEiLCJuYW1lcyI6WyJDaGVja0NpcmNsZTIiLCJTaGllbGRBbGVydCIsIlJhZGlhbEdhdWdlIiwidXNlU3RyZWFtIiwiVGhyZWF0SW50ZWxsaWdlbmNlVmlldyIsIl9zIiwiY3VycmVudFJpc2siLCJldmlkZW5jZSIsInJpc2tTY29yZSIsInJpc2tfc2NvcmUiLCJzZXZlcml0eSIsInJlYXNvbnMiLCJ0b3RhbFdlaWdodCIsInJlZHVjZSIsImFjYyIsImUiLCJ3ZWlnaHQiLCJkaXNwbGF5IiwiZmxleERpcmVjdGlvbiIsImdhcCIsInBhZGRpbmciLCJiYWNrZ3JvdW5kQ29sb3IiLCJib3JkZXJSYWRpdXMiLCJib3JkZXIiLCJhbGlnbkl0ZW1zIiwiZm9udFNpemUiLCJmb250V2VpZ2h0IiwibGV0dGVyU3BhY2luZyIsImNvbG9yIiwidGV4dFRyYW5zZm9ybSIsIm1hcmdpbiIsImxpbmVIZWlnaHQiLCJsZW5ndGgiLCJqb2luIiwiZ3JpZFRlbXBsYXRlQ29sdW1ucyIsImp1c3RpZnlDb250ZW50IiwidGV4dEFsaWduIiwibWFyZ2luQm90dG9tIiwibWFyZ2luVG9wIiwibWFwIiwiaWR4IiwicGVyY2VudCIsIk1hdGgiLCJyb3VuZCIsInNpZ25hbCIsImZvbnRGYW1pbHkiLCJoZWlnaHQiLCJvdmVyZmxvdyIsIndpZHRoIiwiX2MiXSwiaWdub3JlTGlzdCI6W10sInNvdXJjZXMiOlsiVGhyZWF0SW50ZWxsaWdlbmNlVmlldy50c3giXSwic291cmNlc0NvbnRlbnQiOlsiaW1wb3J0IFJlYWN0IGZyb20gJ3JlYWN0JztcclxuaW1wb3J0IHsgQ2hlY2tDaXJjbGUyLCBTaGllbGRBbGVydCB9IGZyb20gJ2x1Y2lkZS1yZWFjdCc7XHJcbmltcG9ydCB7IFJhZGlhbEdhdWdlIH0gZnJvbSAnLi4vLi4vY29tcG9uZW50cy91aS9SYWRpYWxHYXVnZSc7XHJcbmltcG9ydCB7IHVzZVN0cmVhbSB9IGZyb20gJy4uLy4uL2NvbnRleHQvU3RyZWFtQ29udGV4dCc7XHJcblxyXG5leHBvcnQgY29uc3QgVGhyZWF0SW50ZWxsaWdlbmNlVmlldzogUmVhY3QuRkMgPSAoKSA9PiB7XHJcbiAgY29uc3QgeyBjdXJyZW50UmlzayB9ID0gdXNlU3RyZWFtKCk7XHJcblxyXG4gIGNvbnN0IGV2aWRlbmNlID0gY3VycmVudFJpc2s/LmV2aWRlbmNlIHx8IFtdO1xyXG4gIGNvbnN0IHJpc2tTY29yZSA9IGN1cnJlbnRSaXNrPy5yaXNrX3Njb3JlIHx8IDA7XHJcbiAgY29uc3Qgc2V2ZXJpdHkgPSBjdXJyZW50Umlzaz8uc2V2ZXJpdHkgfHwgJ05PUk1BTCc7XHJcbiAgY29uc3QgcmVhc29ucyA9IGN1cnJlbnRSaXNrPy5yZWFzb25zIHx8IFtdO1xyXG5cclxuICBjb25zdCB0b3RhbFdlaWdodCA9IGV2aWRlbmNlLnJlZHVjZSgoYWNjLCBlKSA9PiBhY2MgKyAoZS53ZWlnaHQgfHwgMCksIDApO1xyXG5cclxuICByZXR1cm4gKFxyXG4gICAgPGRpdiBzdHlsZT17eyBkaXNwbGF5OiAnZmxleCcsIGZsZXhEaXJlY3Rpb246ICdjb2x1bW4nLCBnYXA6ICd2YXIoLS1zcGFjZS02KScgfX0+XHJcbiAgICAgIHsvKiBIZWFkZXIgQmFubmVyICovfVxyXG4gICAgICA8ZGl2XHJcbiAgICAgICAgc3R5bGU9e3tcclxuICAgICAgICAgIHBhZGRpbmc6ICd2YXIoLS1zcGFjZS01KSB2YXIoLS1zcGFjZS02KScsXHJcbiAgICAgICAgICBiYWNrZ3JvdW5kQ29sb3I6ICd2YXIoLS1iZy1zdXJmYWNlKScsXHJcbiAgICAgICAgICBib3JkZXJSYWRpdXM6ICd2YXIoLS1yYWRpdXMtbGcpJyxcclxuICAgICAgICAgIGJvcmRlcjogJzFweCBzb2xpZCB2YXIoLS1ib3JkZXItc3VidGxlKScsXHJcbiAgICAgICAgICBkaXNwbGF5OiAnZmxleCcsXHJcbiAgICAgICAgICBmbGV4RGlyZWN0aW9uOiAnY29sdW1uJyxcclxuICAgICAgICAgIGdhcDogJzhweCcsXHJcbiAgICAgICAgfX1cclxuICAgICAgPlxyXG4gICAgICAgIDxkaXYgc3R5bGU9e3sgZGlzcGxheTogJ2ZsZXgnLCBhbGlnbkl0ZW1zOiAnY2VudGVyJywgZ2FwOiAnOHB4JyB9fT5cclxuICAgICAgICAgIDxTaGllbGRBbGVydCBzaXplPXsxOH0gY29sb3I9XCJ2YXIoLS1hY2NlbnQtcHJpbWFyeSlcIiAvPlxyXG4gICAgICAgICAgPHNwYW4gc3R5bGU9e3sgZm9udFNpemU6ICcwLjc1cmVtJywgZm9udFdlaWdodDogNzAwLCBsZXR0ZXJTcGFjaW5nOiAnMC4wNmVtJywgY29sb3I6ICd2YXIoLS10ZXh0LW11dGVkKScsIHRleHRUcmFuc2Zvcm06ICd1cHBlcmNhc2UnIH19PlxyXG4gICAgICAgICAgICBCRUhBVklPUkFMIFJJU0sgQVRUUklCVVRJT04gJiBFWFBMQUlOQUJJTElUWVxyXG4gICAgICAgICAgPC9zcGFuPlxyXG4gICAgICAgIDwvZGl2PlxyXG4gICAgICAgIDxwIHN0eWxlPXt7IGZvbnRTaXplOiAnMC45NXJlbScsIGZvbnRXZWlnaHQ6IDYwMCwgY29sb3I6ICd2YXIoLS10ZXh0LXByaW1hcnkpJywgbWFyZ2luOiAwLCBsaW5lSGVpZ2h0OiAxLjUgfX0+XHJcbiAgICAgICAgICB7cmVhc29ucy5sZW5ndGggPiAwXHJcbiAgICAgICAgICAgID8gcmVhc29ucy5qb2luKCcuICcpXHJcbiAgICAgICAgICAgIDogJ0hvc3QgbWV0cmljcyBhcmUgb3BlcmF0aW5nIHdpdGhpbiB2ZXJpZmllZCBzdGF0aXN0aWNhbCBiYXNlbGluZSBlbnZlbG9wZXMuIFplcm8gYmVoYXZpb3JhbCBhbm9tYWxpZXMgZGV0ZWN0ZWQuJ31cclxuICAgICAgICA8L3A+XHJcbiAgICAgIDwvZGl2PlxyXG5cclxuICAgICAgey8qIE1haW4gR3JpZDogR2F1Z2UgKyBBdHRyaWJ1dGlvbiBCcmVha2Rvd24gKi99XHJcbiAgICAgIDxkaXYgc3R5bGU9e3sgZGlzcGxheTogJ2dyaWQnLCBncmlkVGVtcGxhdGVDb2x1bW5zOiAnMzIwcHggMWZyJywgZ2FwOiAndmFyKC0tc3BhY2UtNSknIH19PlxyXG4gICAgICAgIHsvKiBMZWZ0OiBDdXJyZW50IENvbXBvc2l0ZSBSaXNrIFNjb3JlICovfVxyXG4gICAgICAgIDxkaXZcclxuICAgICAgICAgIHN0eWxlPXt7XHJcbiAgICAgICAgICAgIHBhZGRpbmc6ICd2YXIoLS1zcGFjZS01KScsXHJcbiAgICAgICAgICAgIGJhY2tncm91bmRDb2xvcjogJ3ZhcigtLWJnLXN1cmZhY2UpJyxcclxuICAgICAgICAgICAgYm9yZGVyUmFkaXVzOiAndmFyKC0tcmFkaXVzLWxnKScsXHJcbiAgICAgICAgICAgIGJvcmRlcjogJzFweCBzb2xpZCB2YXIoLS1ib3JkZXItc3VidGxlKScsXHJcbiAgICAgICAgICAgIGRpc3BsYXk6ICdmbGV4JyxcclxuICAgICAgICAgICAgZmxleERpcmVjdGlvbjogJ2NvbHVtbicsXHJcbiAgICAgICAgICAgIGFsaWduSXRlbXM6ICdjZW50ZXInLFxyXG4gICAgICAgICAgICBqdXN0aWZ5Q29udGVudDogJ2NlbnRlcicsXHJcbiAgICAgICAgICAgIHRleHRBbGlnbjogJ2NlbnRlcicsXHJcbiAgICAgICAgICB9fVxyXG4gICAgICAgID5cclxuICAgICAgICAgIDxzcGFuIHN0eWxlPXt7IGZvbnRTaXplOiAnMC43NXJlbScsIGZvbnRXZWlnaHQ6IDcwMCwgbGV0dGVyU3BhY2luZzogJzAuMDZlbScsIGNvbG9yOiAndmFyKC0tdGV4dC1tdXRlZCknLCB0ZXh0VHJhbnNmb3JtOiAndXBwZXJjYXNlJywgbWFyZ2luQm90dG9tOiAnMTZweCcgfX0+XHJcbiAgICAgICAgICAgIENPTVBPU0lURSBSSVNLIEVOVkVMT1BFXHJcbiAgICAgICAgICA8L3NwYW4+XHJcbiAgICAgICAgICA8UmFkaWFsR2F1Z2UgdmFsdWU9e3Jpc2tTY29yZX0gc2V2ZXJpdHk9e3NldmVyaXR5fSBzaXplPXsxNTB9IC8+XHJcbiAgICAgICAgICA8ZGl2IHN0eWxlPXt7IG1hcmdpblRvcDogJzE0cHgnIH19PlxyXG4gICAgICAgICAgICA8c3BhbiBzdHlsZT17eyBmb250U2l6ZTogJzEuMnJlbScsIGZvbnRXZWlnaHQ6IDgwMCwgY29sb3I6ICd2YXIoLS10ZXh0LXByaW1hcnkpJyB9fT5cclxuICAgICAgICAgICAgICB7c2V2ZXJpdHl9IFNFVkVSSVRZXHJcbiAgICAgICAgICAgIDwvc3Bhbj5cclxuICAgICAgICAgICAgPHAgc3R5bGU9e3sgZm9udFNpemU6ICcwLjhyZW0nLCBjb2xvcjogJ3ZhcigtLXRleHQtbXV0ZWQpJywgbWFyZ2luOiAnNHB4IDAgMCAwJyB9fT5cclxuICAgICAgICAgICAgICBEZXRlcm1pbmlzdGljIDDigJMxMDAgYm91bmRlZCBzY29yZVxyXG4gICAgICAgICAgICA8L3A+XHJcbiAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICA8L2Rpdj5cclxuXHJcbiAgICAgICAgey8qIFJpZ2h0OiBTaWduYWwgUmlzayBDb250cmlidXRpb25zICovfVxyXG4gICAgICAgIDxkaXZcclxuICAgICAgICAgIHN0eWxlPXt7XHJcbiAgICAgICAgICAgIHBhZGRpbmc6ICd2YXIoLS1zcGFjZS01KScsXHJcbiAgICAgICAgICAgIGJhY2tncm91bmRDb2xvcjogJ3ZhcigtLWJnLXN1cmZhY2UpJyxcclxuICAgICAgICAgICAgYm9yZGVyUmFkaXVzOiAndmFyKC0tcmFkaXVzLWxnKScsXHJcbiAgICAgICAgICAgIGJvcmRlcjogJzFweCBzb2xpZCB2YXIoLS1ib3JkZXItc3VidGxlKScsXHJcbiAgICAgICAgICAgIGRpc3BsYXk6ICdmbGV4JyxcclxuICAgICAgICAgICAgZmxleERpcmVjdGlvbjogJ2NvbHVtbicsXHJcbiAgICAgICAgICAgIGp1c3RpZnlDb250ZW50OiAnc3BhY2UtYmV0d2VlbicsXHJcbiAgICAgICAgICB9fVxyXG4gICAgICAgID5cclxuICAgICAgICAgIDxkaXY+XHJcbiAgICAgICAgICAgIDxkaXYgc3R5bGU9e3sgZGlzcGxheTogJ2ZsZXgnLCBhbGlnbkl0ZW1zOiAnY2VudGVyJywganVzdGlmeUNvbnRlbnQ6ICdzcGFjZS1iZXR3ZWVuJywgbWFyZ2luQm90dG9tOiAnMTRweCcgfX0+XHJcbiAgICAgICAgICAgICAgPHNwYW4gc3R5bGU9e3sgZm9udFNpemU6ICcwLjgycmVtJywgZm9udFdlaWdodDogNzAwLCBsZXR0ZXJTcGFjaW5nOiAnMC4wNGVtJywgY29sb3I6ICd2YXIoLS10ZXh0LXByaW1hcnkpJywgdGV4dFRyYW5zZm9ybTogJ3VwcGVyY2FzZScgfX0+XHJcbiAgICAgICAgICAgICAgICBTSUdOQUwgUklTSyBXRUlHSFQgQ09OVFJJQlVUSU9OU1xyXG4gICAgICAgICAgICAgIDwvc3Bhbj5cclxuICAgICAgICAgICAgICA8c3BhbiBzdHlsZT17eyBmb250U2l6ZTogJzAuNzVyZW0nLCBjb2xvcjogJ3ZhcigtLXRleHQtbXV0ZWQpJyB9fT5cclxuICAgICAgICAgICAgICAgIHtldmlkZW5jZS5sZW5ndGh9IGFjdGl2ZSBjb250cmlidXRvcnNcclxuICAgICAgICAgICAgICA8L3NwYW4+XHJcbiAgICAgICAgICAgIDwvZGl2PlxyXG5cclxuICAgICAgICAgICAgPGRpdiBzdHlsZT17eyBkaXNwbGF5OiAnZmxleCcsIGZsZXhEaXJlY3Rpb246ICdjb2x1bW4nLCBnYXA6ICcxMHB4JyB9fT5cclxuICAgICAgICAgICAgICB7ZXZpZGVuY2UubGVuZ3RoID4gMCA/IChcclxuICAgICAgICAgICAgICAgIGV2aWRlbmNlLm1hcCgoZSwgaWR4KSA9PiB7XHJcbiAgICAgICAgICAgICAgICAgIGNvbnN0IHBlcmNlbnQgPSB0b3RhbFdlaWdodCA+IDAgPyBNYXRoLnJvdW5kKChlLndlaWdodCAvIHRvdGFsV2VpZ2h0KSAqIDEwMCkgOiAwO1xyXG4gICAgICAgICAgICAgICAgICByZXR1cm4gKFxyXG4gICAgICAgICAgICAgICAgICAgIDxkaXYga2V5PXtpZHh9IHN0eWxlPXt7IGRpc3BsYXk6ICdmbGV4JywgZmxleERpcmVjdGlvbjogJ2NvbHVtbicsIGdhcDogJzRweCcgfX0+XHJcbiAgICAgICAgICAgICAgICAgICAgICA8ZGl2IHN0eWxlPXt7IGRpc3BsYXk6ICdmbGV4JywganVzdGlmeUNvbnRlbnQ6ICdzcGFjZS1iZXR3ZWVuJywgZm9udFNpemU6ICcwLjgycmVtJyB9fT5cclxuICAgICAgICAgICAgICAgICAgICAgICAgPHNwYW4gc3R5bGU9e3sgZm9udFdlaWdodDogNjAwLCBjb2xvcjogJ3ZhcigtLXRleHQtcHJpbWFyeSknIH19PntlLnNpZ25hbH08L3NwYW4+XHJcbiAgICAgICAgICAgICAgICAgICAgICAgIDxzcGFuIHN0eWxlPXt7IGNvbG9yOiAndmFyKC0tdGV4dC1tdXRlZCknLCBmb250RmFtaWx5OiAndmFyKC0tZm9udC1tb25vKScgfX0gY2xhc3NOYW1lPVwidGFidWxhci1udW1zXCI+XHJcbiAgICAgICAgICAgICAgICAgICAgICAgICAgK3tlLndlaWdodH0gcHRzICh7cGVyY2VudH0lKVxyXG4gICAgICAgICAgICAgICAgICAgICAgICA8L3NwYW4+XHJcbiAgICAgICAgICAgICAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICAgICAgICAgICAgICAgIDxkaXYgc3R5bGU9e3sgaGVpZ2h0OiAnNnB4JywgYmFja2dyb3VuZENvbG9yOiAndmFyKC0tYmctc3VyZmFjZS1zdWJ0bGUpJywgYm9yZGVyUmFkaXVzOiAndmFyKC0tcmFkaXVzLWZ1bGwpJywgb3ZlcmZsb3c6ICdoaWRkZW4nIH19PlxyXG4gICAgICAgICAgICAgICAgICAgICAgICA8ZGl2XHJcbiAgICAgICAgICAgICAgICAgICAgICAgICAgc3R5bGU9e3tcclxuICAgICAgICAgICAgICAgICAgICAgICAgICAgIGhlaWdodDogJzEwMCUnLFxyXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgd2lkdGg6IGAke3BlcmNlbnR9JWAsXHJcbiAgICAgICAgICAgICAgICAgICAgICAgICAgICBiYWNrZ3JvdW5kQ29sb3I6ICd2YXIoLS1hY2NlbnQtcHJpbWFyeSknLFxyXG4gICAgICAgICAgICAgICAgICAgICAgICAgICAgYm9yZGVyUmFkaXVzOiAndmFyKC0tcmFkaXVzLWZ1bGwpJyxcclxuICAgICAgICAgICAgICAgICAgICAgICAgICB9fVxyXG4gICAgICAgICAgICAgICAgICAgICAgICAvPlxyXG4gICAgICAgICAgICAgICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgICAgICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgICAgICAgICAgICk7XHJcbiAgICAgICAgICAgICAgICB9KVxyXG4gICAgICAgICAgICAgICkgOiAoXHJcbiAgICAgICAgICAgICAgICA8ZGl2IHN0eWxlPXt7IGRpc3BsYXk6ICdmbGV4JywgYWxpZ25JdGVtczogJ2NlbnRlcicsIGdhcDogJzhweCcsIHBhZGRpbmc6ICcyNHB4IDAnLCBjb2xvcjogJ3ZhcigtLXRleHQtbXV0ZWQpJywgZm9udFNpemU6ICcwLjg1cmVtJyB9fT5cclxuICAgICAgICAgICAgICAgICAgPENoZWNrQ2lyY2xlMiBzaXplPXsxNn0gY29sb3I9XCJ2YXIoLS1zZXZlcml0eS1sb3cpXCIgLz5cclxuICAgICAgICAgICAgICAgICAgPHNwYW4+WmVybyBhY3RpdmUgYW5vbWFseSBjb250cmlidXRvcnMuIEhvc3QgYmVoYXZpb3IgaXMgd2l0aGluIG5vcm1hbCB2YXJpYW5jZS48L3NwYW4+XHJcbiAgICAgICAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICAgICAgICApfVxyXG4gICAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICAgIDwvZGl2PlxyXG5cclxuICAgICAgICAgIDxkaXZcclxuICAgICAgICAgICAgc3R5bGU9e3tcclxuICAgICAgICAgICAgICBtYXJnaW5Ub3A6ICcxNnB4JyxcclxuICAgICAgICAgICAgICBwYWRkaW5nOiAnMTBweCAxNHB4JyxcclxuICAgICAgICAgICAgICBiYWNrZ3JvdW5kQ29sb3I6ICd2YXIoLS1iZy1zdXJmYWNlLXN1YnRsZSknLFxyXG4gICAgICAgICAgICAgIGJvcmRlclJhZGl1czogJ3ZhcigtLXJhZGl1cy1tZCknLFxyXG4gICAgICAgICAgICAgIGRpc3BsYXk6ICdmbGV4JyxcclxuICAgICAgICAgICAgICBhbGlnbkl0ZW1zOiAnY2VudGVyJyxcclxuICAgICAgICAgICAgICBqdXN0aWZ5Q29udGVudDogJ3NwYWNlLWJldHdlZW4nLFxyXG4gICAgICAgICAgICAgIGZvbnRTaXplOiAnMC43OHJlbScsXHJcbiAgICAgICAgICAgIH19XHJcbiAgICAgICAgICA+XHJcbiAgICAgICAgICAgIDxzcGFuIHN0eWxlPXt7IGNvbG9yOiAndmFyKC0tdGV4dC1zZWNvbmRhcnkpJyB9fT5cclxuICAgICAgICAgICAgICBQcm92ZW5hbmNlOiA8c3Ryb25nIHN0eWxlPXt7IGNvbG9yOiAndmFyKC0tdGV4dC1wcmltYXJ5KScgfX0+Q29udGludW91cyBTZW5zb3IgQ29sbGVjdG9yPC9zdHJvbmc+XHJcbiAgICAgICAgICAgIDwvc3Bhbj5cclxuICAgICAgICAgICAgPHNwYW4gc3R5bGU9e3sgY29sb3I6ICd2YXIoLS10ZXh0LXNlY29uZGFyeSknIH19PlxyXG4gICAgICAgICAgICAgIEF0dHJpYnV0aW9uIE1vZGVsOiA8c3Ryb25nIHN0eWxlPXt7IGNvbG9yOiAndmFyKC0tdGV4dC1wcmltYXJ5KScgfX0+SXNvbGF0aW9uRm9yZXN0ICsgTE9GPC9zdHJvbmc+XHJcbiAgICAgICAgICAgIDwvc3Bhbj5cclxuICAgICAgICAgIDwvZGl2PlxyXG4gICAgICAgIDwvZGl2PlxyXG4gICAgICA8L2Rpdj5cclxuXHJcbiAgICAgIHsvKiBSZWFzb25pbmcgQ2hhaW4gVGltZWxpbmUgKi99XHJcbiAgICAgIDxkaXZcclxuICAgICAgICBzdHlsZT17e1xyXG4gICAgICAgICAgcGFkZGluZzogJ3ZhcigtLXNwYWNlLTUpJyxcclxuICAgICAgICAgIGJhY2tncm91bmRDb2xvcjogJ3ZhcigtLWJnLXN1cmZhY2UpJyxcclxuICAgICAgICAgIGJvcmRlclJhZGl1czogJ3ZhcigtLXJhZGl1cy1sZyknLFxyXG4gICAgICAgICAgYm9yZGVyOiAnMXB4IHNvbGlkIHZhcigtLWJvcmRlci1zdWJ0bGUpJyxcclxuICAgICAgICAgIGRpc3BsYXk6ICdmbGV4JyxcclxuICAgICAgICAgIGZsZXhEaXJlY3Rpb246ICdjb2x1bW4nLFxyXG4gICAgICAgICAgZ2FwOiAnMTJweCcsXHJcbiAgICAgICAgfX1cclxuICAgICAgPlxyXG4gICAgICAgIDxzcGFuIHN0eWxlPXt7IGZvbnRTaXplOiAnMC44MnJlbScsIGZvbnRXZWlnaHQ6IDcwMCwgbGV0dGVyU3BhY2luZzogJzAuMDRlbScsIGNvbG9yOiAndmFyKC0tdGV4dC1wcmltYXJ5KScsIHRleHRUcmFuc2Zvcm06ICd1cHBlcmNhc2UnIH19PlxyXG4gICAgICAgICAgSU5URUxMSUdFTkNFIFJFQVNPTklORyBDSEFJTlxyXG4gICAgICAgIDwvc3Bhbj5cclxuXHJcbiAgICAgICAgPGRpdiBzdHlsZT17eyBkaXNwbGF5OiAnZ3JpZCcsIGdyaWRUZW1wbGF0ZUNvbHVtbnM6ICdyZXBlYXQoNCwgMWZyKScsIGdhcDogJzEycHgnIH19PlxyXG4gICAgICAgICAgPGRpdiBzdHlsZT17eyBwYWRkaW5nOiAnMTJweCcsIGJhY2tncm91bmRDb2xvcjogJ3ZhcigtLWJnLXN1cmZhY2Utc3VidGxlKScsIGJvcmRlclJhZGl1czogJ3ZhcigtLXJhZGl1cy1tZCknIH19PlxyXG4gICAgICAgICAgICA8c3BhbiBzdHlsZT17eyBmb250U2l6ZTogJzAuNjhyZW0nLCBjb2xvcjogJ3ZhcigtLWFjY2VudC1wcmltYXJ5KScsIGZvbnRXZWlnaHQ6IDcwMCB9fT4wMS4gT0JTRVJWQVRJT048L3NwYW4+XHJcbiAgICAgICAgICAgIDxkaXYgc3R5bGU9e3sgZm9udFNpemU6ICcwLjg1cmVtJywgZm9udFdlaWdodDogNjAwLCBjb2xvcjogJ3ZhcigtLXRleHQtcHJpbWFyeSknLCBtYXJnaW5Ub3A6ICc0cHgnIH19PlxyXG4gICAgICAgICAgICAgIEhvc3QgVGVsZW1ldHJ5IFNhbXBsaW5nXHJcbiAgICAgICAgICAgIDwvZGl2PlxyXG4gICAgICAgICAgICA8cCBzdHlsZT17eyBmb250U2l6ZTogJzAuNzRyZW0nLCBjb2xvcjogJ3ZhcigtLXRleHQtbXV0ZWQpJywgbWFyZ2luVG9wOiAnNHB4JywgbWFyZ2luOiAwIH19PlxyXG4gICAgICAgICAgICAgIENQVSwgUkFNLCBTb2NrZXQgZmxvd3MsIFByb2Nlc3MgdGFibGVzIHNhbXBsZWQgZXZlcnkgNXMuXHJcbiAgICAgICAgICAgIDwvcD5cclxuICAgICAgICAgIDwvZGl2PlxyXG5cclxuICAgICAgICAgIDxkaXYgc3R5bGU9e3sgcGFkZGluZzogJzEycHgnLCBiYWNrZ3JvdW5kQ29sb3I6ICd2YXIoLS1iZy1zdXJmYWNlLXN1YnRsZSknLCBib3JkZXJSYWRpdXM6ICd2YXIoLS1yYWRpdXMtbWQpJyB9fT5cclxuICAgICAgICAgICAgPHNwYW4gc3R5bGU9e3sgZm9udFNpemU6ICcwLjY4cmVtJywgY29sb3I6ICd2YXIoLS1hY2NlbnQtcHJpbWFyeSknLCBmb250V2VpZ2h0OiA3MDAgfX0+MDIuIEJBU0VMSU5FIENIRUNLPC9zcGFuPlxyXG4gICAgICAgICAgICA8ZGl2IHN0eWxlPXt7IGZvbnRTaXplOiAnMC44NXJlbScsIGZvbnRXZWlnaHQ6IDYwMCwgY29sb3I6ICd2YXIoLS10ZXh0LXByaW1hcnkpJywgbWFyZ2luVG9wOiAnNHB4JyB9fT5cclxuICAgICAgICAgICAgICBTdGF0aXN0aWNhbCBEZXZpYXRpb25cclxuICAgICAgICAgICAgPC9kaXY+XHJcbiAgICAgICAgICAgIDxwIHN0eWxlPXt7IGZvbnRTaXplOiAnMC43NHJlbScsIGNvbG9yOiAndmFyKC0tdGV4dC1tdXRlZCknLCBtYXJnaW5Ub3A6ICc0cHgnLCBtYXJnaW46IDAgfX0+XHJcbiAgICAgICAgICAgICAgUm9sbGluZyBtZWFuIGFuZCB2YXJpYW5jZSBjb21wYXJpc29uIGFnYWluc3Qga25vd24gZW52ZWxvcGVzLlxyXG4gICAgICAgICAgICA8L3A+XHJcbiAgICAgICAgICA8L2Rpdj5cclxuXHJcbiAgICAgICAgICA8ZGl2IHN0eWxlPXt7IHBhZGRpbmc6ICcxMnB4JywgYmFja2dyb3VuZENvbG9yOiAndmFyKC0tYmctc3VyZmFjZS1zdWJ0bGUpJywgYm9yZGVyUmFkaXVzOiAndmFyKC0tcmFkaXVzLW1kKScgfX0+XHJcbiAgICAgICAgICAgIDxzcGFuIHN0eWxlPXt7IGZvbnRTaXplOiAnMC42OHJlbScsIGNvbG9yOiAndmFyKC0tYWNjZW50LXByaW1hcnkpJywgZm9udFdlaWdodDogNzAwIH19PjAzLiBNTCBTQ09SSU5HPC9zcGFuPlxyXG4gICAgICAgICAgICA8ZGl2IHN0eWxlPXt7IGZvbnRTaXplOiAnMC44NXJlbScsIGZvbnRXZWlnaHQ6IDYwMCwgY29sb3I6ICd2YXIoLS10ZXh0LXByaW1hcnkpJywgbWFyZ2luVG9wOiAnNHB4JyB9fT5cclxuICAgICAgICAgICAgICBTaWduYWwgV2VpZ2h0IEFnZ3JlZ2F0aW9uXHJcbiAgICAgICAgICAgIDwvZGl2PlxyXG4gICAgICAgICAgICA8cCBzdHlsZT17eyBmb250U2l6ZTogJzAuNzRyZW0nLCBjb2xvcjogJ3ZhcigtLXRleHQtbXV0ZWQpJywgbWFyZ2luVG9wOiAnNHB4JywgbWFyZ2luOiAwIH19PlxyXG4gICAgICAgICAgICAgIElzb2xhdGlvbiBGb3Jlc3Qgc2NvcmUgY2FsY3VsYXRpb24gd2l0aCBib3VuZGVkIHdlaWdodHMuXHJcbiAgICAgICAgICAgIDwvcD5cclxuICAgICAgICAgIDwvZGl2PlxyXG5cclxuICAgICAgICAgIDxkaXYgc3R5bGU9e3sgcGFkZGluZzogJzEycHgnLCBiYWNrZ3JvdW5kQ29sb3I6ICd2YXIoLS1iZy1zdXJmYWNlLXN1YnRsZSknLCBib3JkZXJSYWRpdXM6ICd2YXIoLS1yYWRpdXMtbWQpJyB9fT5cclxuICAgICAgICAgICAgPHNwYW4gc3R5bGU9e3sgZm9udFNpemU6ICcwLjY4cmVtJywgY29sb3I6ICd2YXIoLS1zZXZlcml0eS1sb3cpJywgZm9udFdlaWdodDogNzAwIH19PjA0LiBFTkZPUkNFTUVOVDwvc3Bhbj5cclxuICAgICAgICAgICAgPGRpdiBzdHlsZT17eyBmb250U2l6ZTogJzAuODVyZW0nLCBmb250V2VpZ2h0OiA2MDAsIGNvbG9yOiAndmFyKC0tdGV4dC1wcmltYXJ5KScsIG1hcmdpblRvcDogJzRweCcgfX0+XHJcbiAgICAgICAgICAgICAgSW5jaWRlbnQgRGVkdXBsaWNhdGlvblxyXG4gICAgICAgICAgICA8L2Rpdj5cclxuICAgICAgICAgICAgPHAgc3R5bGU9e3sgZm9udFNpemU6ICcwLjc0cmVtJywgY29sb3I6ICd2YXIoLS10ZXh0LW11dGVkKScsIG1hcmdpblRvcDogJzRweCcsIG1hcmdpbjogMCB9fT5cclxuICAgICAgICAgICAgICBBY3Rpb25hYmxlIG5vdGlmaWNhdGlvbnMgZGlzcGF0Y2hlZCB3aXRob3V0IGFsZXJ0IHNwYW0uXHJcbiAgICAgICAgICAgIDwvcD5cclxuICAgICAgICAgIDwvZGl2PlxyXG4gICAgICAgIDwvZGl2PlxyXG4gICAgICA8L2Rpdj5cclxuICAgIDwvZGl2PlxyXG4gICk7XHJcbn07XHJcbiJdLCJmaWxlIjoiQzovVXNlcnMvVklHTkVTSC9BVVJBL0FVUkEtUHJpdmFjeS1HdWFyZGlhbi93ZWIvc3JjL2ZlYXR1cmVzL3RocmVhdHMvVGhyZWF0SW50ZWxsaWdlbmNlVmlldy50c3gifQ==

@@ -1,6 +1,45 @@
-streamlit>=1.32
-pandas>=2.0
-numpy>=1.24
-scikit-learn>=1.3
-psutil>=5.9
-opencv-python>=4.8
+# AURA runtime dependencies.
+#
+# pyproject.toml is the authoritative declaration; this file is kept in sync
+# with its [project.dependencies] list and exists because
+# `pip install -r requirements.txt` remains the fastest way to prepare an
+# environment for the existing Streamlit application.
+#
+# Prefer the editable install, which also provides the `aura-doctor` command
+# and the dev tooling:
+#
+#     python -m pip install -e ".[dev]"
+#
+# Upper bounds are deliberate. scikit-learn has changed estimator defaults
+# across minor releases before, and in a security tool a silent change to
+# detection behaviour is a correctness failure, not an inconvenience.
+
+pydantic>=2.9,<3.0
+pydantic-settings>=2.5,<3.0
+
+psutil>=5.9,<8.0
+numpy>=1.24,<3.0
+pandas>=2.0,<3.0
+scikit-learn>=1.3,<2.0
+
+# NOTE — unresolved version floor.
+# app.py calls st.dataframe(..., width="stretch") and st.line_chart(...,
+# width="stretch"). That `width` parameter is newer than this 1.32 floor, so an
+# environment satisfying this constraint may install a Streamlit that cannot run
+# app.py. The floor has deliberately NOT been raised on a guess: run
+# `streamlit --version` (aura-doctor also reports it) and the bound will be set
+# to the confirmed value.
+streamlit>=1.32,<2.0
+
+# Camera availability probing. Retained here — not commented out — because it is
+# part of the existing application's working feature set and removing it from
+# this file would silently take that capability away on the next reinstall.
+# Installing the library activates nothing on its own: the probe is off by
+# default in both aura.core.config (camera_probe_enabled=False) and the
+# Streamlit sidebar, and it is only ever reported as availability, never as
+# evidence of camera misuse.
+#
+# In pyproject.toml it is an optional extra instead (`aura[camera]`), so a
+# minimal or headless install can omit it. sensors.py already guards
+# `import cv2` and degrades to UNAVAILABLE rather than reporting a false zero.
+opencv-python>=4.8,<5.0

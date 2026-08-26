@@ -1,0 +1,243 @@
+[build-system]
+# setuptools>=77 is required for the SPDX `license` string used below. Older
+# setuptools rejects it, and newer setuptools deprecates the `{ text = ... }`
+# table form and the `License ::` trove classifier that preceded it.
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+# ======================================================================
+# Project metadata
+# ======================================================================
+#
+# requirements.txt is retained deliberately. It remains the fastest way to
+# install dependencies for the existing Streamlit application, and removing it
+# would break any existing habit or script that relies on it. This file is now
+# the authoritative dependency declaration; requirements.txt is kept in sync
+# with the [project.dependencies] list below.
+#
+# Every dependency carries an upper bound. Without one, a future major release
+# of pydantic or scikit-learn can silently change behaviour in a security tool
+# — scikit-learn in particular has changed estimator defaults across minor
+# versions before.
+
+[project]
+name = "aura-privacy-guardian"
+version = "2.0.0.dev0"
+description = "AI-powered real-time privacy intelligence and intrusion detection for Windows"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "VIGNESH" }]
+keywords = [
+    "security",
+    "privacy",
+    "intrusion-detection",
+    "anomaly-detection",
+    "windows",
+    "monitoring",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Win32 (MS Windows)",
+    "Intended Audience :: System Administrators",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: System :: Monitoring",
+]
+
+dependencies = [
+    # --- Phase 2 foundation -------------------------------------------
+    "pydantic>=2.9,<3.0",
+    "pydantic-settings>=2.5,<3.0",
+
+    # --- Existing runtime (unchanged behaviour) -----------------------
+    "psutil>=5.9,<8.0",
+    "numpy>=1.24,<3.0",
+    "pandas>=2.0,<3.0",
+    "scikit-learn>=1.3,<2.0",
+    "streamlit>=1.32,<2.0",
+]
+
+[project.optional-dependencies]
+# Webcam availability probing. Optional because sensors.py already guards
+# `import cv2` with try/except ImportError and degrades cleanly, and because
+# opencv-python is a large wheel that lags behind new Python releases. AURA
+# reports camera state as UNAVAILABLE rather than pretending it is idle.
+camera = ["opencv-python>=4.8,<5.0"]
+
+# Reserved for Phase 9 onward. Listed now so the dependency direction is
+# explicit, but not installed by default — the Streamlit application must keep
+# working without a web framework present.
+api = [
+    "fastapi>=0.115,<1.0",
+    "uvicorn[standard]>=0.30,<1.0",
+    "sqlalchemy>=2.0,<3.0",
+    "websockets>=12.0,<15.0",
+]
+
+dev = [
+    "pytest>=8.0,<9.0",
+    "pytest-cov>=5.0,<7.0",
+    "ruff>=0.6,<1.0",
+    "mypy>=1.11,<2.0",
+]
+
+[project.scripts]
+aura = "aura.cli.main:main"
+aura-agent = "aura.entrypoints.agent_main:main"
+aura-runtime = "aura.runtime:main"
+aura-doctor = "aura.cli.doctor:main"
+
+[project.urls]
+Homepage = "https://github.com/VIGNESH/AURA-Privacy-Guardian"
+
+# ======================================================================
+# Packaging
+# ======================================================================
+#
+# Only the `aura` package is installed. The repository root also holds the
+# legacy top-level modules (app.py, aura_core.py, logger.py, model.py,
+# sensors.py, privacy_monitor.py). Those are intentionally excluded: they are
+# run in place by Streamlit and will be absorbed into the package as each one
+# is migrated. Declaring the include list explicitly also prevents setuptools'
+# flat-layout auto-discovery from erroring on the mixed root.
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["aura*"]
+exclude = ["tests*", "docs*", "data*", "frontend*"]
+
+# ======================================================================
+# pytest
+# ======================================================================
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+# `aura` is included so that the doctests embedded in aura/utils/coercion.py are
+# executed as real tests rather than decorative comments. Both entries must
+# exist on disk: pytest exits with a usage error when a testpath is missing,
+# which is why tests/ ships with a conftest.py from the outset.
+testpaths = ["aura", "tests"]
+pythonpath = ["."]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--doctest-modules",
+]
+markers = [
+    "windows: requires a real Windows host; skipped elsewhere",
+    "slow: takes more than a second",
+    "integration: exercises more than one component together",
+]
+filterwarnings = [
+    # Warnings are treated as errors so that a scikit-learn deprecation
+    # affecting detection behaviour surfaces as a test failure rather than as
+    # console noise nobody reads.
+    "error",
+    "ignore::pytest.PytestUnraisableExceptionWarning",
+    "ignore::DeprecationWarning:streamlit.*",
+    "ignore::DeprecationWarning:pkg_resources.*",
+]
+
+[tool.coverage.run]
+source = ["aura"]
+branch = true
+omit = ["*/__init__.py"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+]
+
+# ======================================================================
+# ruff
+# ======================================================================
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+extend-exclude = [".aura-dev", "build", "dist", "frontend"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # import sorting
+    "B",    # bugbear
+    "BLE",  # blind except — every swallowed exception must be justified
+    "C4",   # comprehensions
+    "UP",   # pyupgrade
+    "S",    # bandit security rules
+    "RUF",  # ruff-specific
+    "SIM",  # simplify
+    "PTH",  # prefer pathlib
+    "DTZ",  # timezone-aware datetimes
+    "LOG",  # logging correctness
+    "G",    # logging format strings
+]
+ignore = [
+    "E501",    # line length is enforced by the formatter
+    "S101",    # assert is legitimate in tests
+    "B008",    # FastAPI dependency injection relies on calls in defaults
+    "SIM108",  # ternaries are not always clearer than an if/else
+]
+
+[tool.ruff.lint.per-file-ignores]
+# The legacy root modules predate this configuration. They are linted, but not
+# held to the new rules until each is migrated, so that Phase 2 does not create
+# hundreds of failures in code it has not touched.
+"app.py" = ["ALL"]
+"aura_core.py" = ["ALL"]
+"logger.py" = ["ALL"]
+"model.py" = ["ALL"]
+"sensors.py" = ["ALL"]
+"privacy_monitor.py" = ["ALL"]
+"tests/*" = ["S", "PTH"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["aura"]
+
+# ======================================================================
+# mypy
+# ======================================================================
+
+[tool.mypy]
+python_version = "3.11"
+# Only `aura`. mypy errors out when a path listed here does not exist, so a
+# speculative entry for a directory that has not been created yet breaks the
+# whole type-check run.
+files = ["aura"]
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_return_any = true
+no_implicit_optional = true
+check_untyped_defs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+strict_equality = true
+plugins = ["pydantic.mypy"]
+
+# The legacy modules are untyped. Enabling strict checking on them now would
+# produce noise that hides real problems in the new code.
+[[tool.mypy.overrides]]
+module = ["app", "aura_core", "logger", "model", "sensors", "privacy_monitor"]
+ignore_errors = true
+
+[[tool.mypy.overrides]]
+module = ["cv2.*", "psutil.*", "sklearn.*", "streamlit.*"]
+ignore_missing_imports = true
+
+[tool.pydantic-mypy]
+init_forbid_extra = true
+init_typed = true
+warn_required_dynamic_aliases = true

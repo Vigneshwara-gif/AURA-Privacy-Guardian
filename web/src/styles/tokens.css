@@ -1,0 +1,193 @@
+/**
+ * AURA Design System Design Tokens — Ultra-Premium Windows Cybersecurity Theme
+ * Full Dark & Light Mode Theme Support
+ */
+
+:root,
+html,
+body,
+[data-theme='dark'],
+.dark {
+  /* Brand Security Blue Palette */
+  --accent-primary: #1677FF;
+  --accent-primary-hover: #38A8FF;
+  --accent-primary-active: #0958D9;
+  --accent-primary-subtle: rgba(22, 119, 255, 0.12);
+  --accent-primary-border: rgba(22, 119, 255, 0.30);
+  --accent-deep: #0B3A78;
+  --accent-soft: #163A63;
+  --accent-glow: 0 0 20px rgba(22, 119, 255, 0.25);
+
+  /* Deep Obsidian Surface Hierarchy */
+  --bg-app: #060A10;
+  --bg-sidebar: #080E18;
+  --bg-surface: #0D1524;
+  --bg-surface-elevated: #121D30;
+  --bg-surface-subtle: #17243A;
+  --bg-surface-inset: #09101C;
+  --bg-hover: rgba(255, 255, 255, 0.04);
+  --bg-active: rgba(22, 119, 255, 0.14);
+
+  /* Structural 1px Borders */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.10);
+  --border-focus: #1677FF;
+  --border-highlight: rgba(56, 168, 255, 0.4);
+
+  /* High-Contrast Typography */
+  --text-primary: #F5F7FA;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+  --text-inverse: #060A10;
+  --text-accent: #38A8FF;
+
+  /* Strict Semantic Severity System */
+  --severity-critical: #EF4444;
+  --severity-critical-bg: rgba(239, 68, 68, 0.10);
+  --severity-critical-border: rgba(239, 68, 68, 0.30);
+
+  --severity-high: #F97316;
+  --severity-high-bg: rgba(249, 115, 22, 0.10);
+  --severity-high-border: rgba(249, 115, 22, 0.30);
+
+  --severity-medium: #F59E0B;
+  --severity-medium-bg: rgba(245, 158, 11, 0.10);
+  --severity-medium-border: rgba(245, 158, 11, 0.30);
+
+  --severity-low: #10B981;
+  --severity-low-bg: rgba(16, 185, 129, 0.10);
+  --severity-low-border: rgba(16, 185, 129, 0.30);
+
+  --severity-info: #38A8FF;
+  --severity-info-bg: rgba(56, 168, 255, 0.10);
+  --severity-info-border: rgba(56, 168, 255, 0.30);
+
+  /* Geometry & Spacing */
+  --radius-xs: 3px;
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+
+  /* Shadows */
+  --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.35);
+  --shadow-card: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-elevated: 0 8px 30px rgba(0, 0, 0, 0.55);
+  --shadow-modal: 0 20px 50px rgba(0, 0, 0, 0.75);
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Fonts */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Cascadia Code', 'Segoe UI Mono', Consolas, monospace;
+}
+
+:root[data-theme='light'],
+html[data-theme='light'],
+html.light,
+body.light,
+[data-theme='light'],
+.light {
+  /* High-Performance Light Cybersecurity Palette */
+  --accent-primary: #1677FF;
+  --accent-primary-hover: #0958D9;
+  --accent-primary-active: #003EB3;
+  --accent-primary-subtle: rgba(22, 119, 255, 0.08);
+  --accent-primary-border: rgba(22, 119, 255, 0.25);
+  --accent-deep: #0B3A78;
+  --accent-soft: #E6F4FF;
+  --accent-glow: 0 0 16px rgba(22, 119, 255, 0.15);
+
+  --bg-app: #F4F6F9;
+  --bg-sidebar: #FFFFFF;
+  --bg-surface: #FFFFFF;
+  --bg-surface-elevated: #F8FAFC;
+  --bg-surface-subtle: #EDF2F7;
+  --bg-surface-inset: #E2E8F0;
+  --bg-hover: rgba(0, 0, 0, 0.04);
+  --bg-active: rgba(22, 119, 255, 0.08);
+
+  --border-subtle: rgba(0, 0, 0, 0.07);
+  --border-default: rgba(0, 0, 0, 0.12);
+  --border-focus: #1677FF;
+  --border-highlight: rgba(22, 119, 255, 0.35);
+
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #64748B;
+  --text-inverse: #FFFFFF;
+  --text-accent: #1677FF;
+
+  --severity-critical: #DC2626;
+  --severity-critical-bg: rgba(220, 38, 38, 0.08);
+  --severity-critical-border: rgba(220, 38, 38, 0.25);
+
+  --severity-high: #EA580C;
+  --severity-high-bg: rgba(234, 88, 12, 0.08);
+  --severity-high-border: rgba(234, 88, 12, 0.25);
+
+  --severity-medium: #D97706;
+  --severity-medium-bg: rgba(217, 119, 6, 0.08);
+  --severity-medium-border: rgba(217, 119, 6, 0.25);
+
+  --severity-low: #059669;
+  --severity-low-bg: rgba(5, 150, 105, 0.08);
+  --severity-low-border: rgba(5, 150, 105, 0.25);
+
+  --severity-info: #0284C7;
+  --severity-info-bg: rgba(2, 132, 199, 0.08);
+  --severity-info-border: rgba(2, 132, 199, 0.25);
+
+  --shadow-subtle: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.07);
+  --shadow-elevated: 0 6px 18px rgba(0, 0, 0, 0.09);
+  --shadow-modal: 0 20px 40px rgba(0, 0, 0, 0.16);
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: var(--bg-app);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum';
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: var(--radius-full);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
