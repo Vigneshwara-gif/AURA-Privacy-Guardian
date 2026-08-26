@@ -312,13 +312,7 @@ class AuraAgentDaemon:
         self.stream_manager.broadcast_sync(tick_msg)
 
         # Also push to Cloud Relay
-        raw_tick_json = json.dumps(tick_msg.to_dict()) if hasattr(tick_msg, "to_dict") else json.dumps({
-            "version": 2,
-            "timestamp": tick_msg.timestamp,
-            "type": "telemetry_tick",
-            "payload": telem_resp.model_dump(),
-        })
-        self.cloud_connector.enqueue_message(raw_tick_json)
+        self.cloud_connector.enqueue_message(tick_msg.model_dump_json())
 
         if scan_res.event:
             should_notify, reason = self.notification_tracker.evaluate_event(scan_res.event)
@@ -350,12 +344,6 @@ class AuraAgentDaemon:
                 )
                 evt_msg = SecurityEventMessage(payload=evt_resp)
                 self.stream_manager.broadcast_sync(evt_msg)
-                raw_evt_json = json.dumps(evt_msg.to_dict()) if hasattr(evt_msg, "to_dict") else json.dumps({
-                    "version": 2,
-                    "timestamp": evt_msg.timestamp,
-                    "type": "security_event",
-                    "payload": evt_resp.model_dump(),
-                })
-                self.cloud_connector.enqueue_message(raw_evt_json)
+                self.cloud_connector.enqueue_message(evt_msg.model_dump_json())
 
         self._cycle_count += 1
