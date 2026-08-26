@@ -5,10 +5,20 @@ FastAPI application factory and server startup configuration for AURA Local API.
 from __future__ import annotations
 
 import logging
+import mimetypes
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.exceptions import HTTPException as StarletteHTTPException
+
+# Explicitly register standard MIME types to prevent Windows Registry from serving .js as text/plain
+mimetypes.add_type("application/javascript", ".js")
+mimetypes.add_type("application/javascript", ".mjs")
+mimetypes.add_type("text/css", ".css")
+mimetypes.add_type("image/svg+xml", ".svg")
+mimetypes.add_type("application/json", ".json")
+mimetypes.add_type("font/woff2", ".woff2")
+mimetypes.add_type("font/woff", ".woff")
 
 from aura.api.auth import SessionManager
 from aura.api.errors import (

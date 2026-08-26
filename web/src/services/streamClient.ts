@@ -67,15 +67,18 @@ export class StreamClient {
     const wsUrl = `${protocol}//${host}/api/v1/stream?token=${encodeURIComponent(token)}`;
 
     try {
-      this.socket = new WebSocket(wsUrl);
+      const ws = new WebSocket(wsUrl);
+      this.socket = ws;
 
-      this.socket.onopen = () => {
+      ws.onopen = () => {
+        if (this.socket !== ws) return;
         this.reconnectAttempts = 0;
         this.setState('CONNECTED');
         this.resetHeartbeatWatchdog();
       };
 
-      this.socket.onmessage = (event: MessageEvent) => {
+      ws.onmessage = (event: MessageEvent) => {
+        if (this.socket !== ws) return;
         this.resetHeartbeatWatchdog();
         try {
           const raw = JSON.parse(event.data);
@@ -94,7 +97,10 @@ export class StreamClient {
         }
       };
 
-      this.socket.onclose = (event: CloseEvent) => {
+      ws.onclose = (event: CloseEvent) => {
+        if (this.socket === ws) {
+          this.socket = null;
+        }
         this.clearHeartbeatWatchdog();
         if (event.code === 1008) {
           // Auth policy violation; clear session and retry
@@ -114,7 +120,7 @@ export class StreamClient {
         }
       };
 
-      this.socket.onerror = () => {
+      ws.onerror = () => {
         // Handled in onclose
       };
     } catch {

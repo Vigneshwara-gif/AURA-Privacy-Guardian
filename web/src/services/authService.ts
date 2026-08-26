@@ -12,6 +12,7 @@ export type AuthExchangeHandler = (code: string) => Promise<SessionHandshakeResp
 export class AuthService {
   private static cachedToken: string | null = null;
   private static cachedScope: string | null = null;
+  private static bootstrapToken: string | null = null;
   private static authPromise: Promise<string | null> | null = null;
   private static exchangeHandler: AuthExchangeHandler | null = null;
 
@@ -66,10 +67,14 @@ export class AuthService {
    * Consume bootstrap token if present in URL query parameters and sanitize URL history.
    */
   public static consumeBootstrapParam(): string | null {
+    if (this.bootstrapToken) {
+      return this.bootstrapToken;
+    }
     try {
       const params = new URLSearchParams(window.location.search);
       const token = params.get('bootstrap');
       if (token) {
+        this.bootstrapToken = token;
         // Immediately sanitize URL history to prevent token leakage
         window.history.replaceState({}, document.title, window.location.pathname);
         return token;
