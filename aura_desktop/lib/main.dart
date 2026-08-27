@@ -128,7 +128,9 @@ class _AuraMainShellState extends State<AuraMainShell> {
       case 10:
         return const ReportsView();
       case 11:
-        return const SettingsView();
+        return SettingsView(
+          onReopenOnboarding: () => setState(() => _isOnboardingActive = true),
+        );
       default:
         return const OverviewView();
     }

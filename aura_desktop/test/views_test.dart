@@ -56,13 +56,13 @@ void main() {
   testWidgets('ScanView renders without throwing exceptions', (tester) async {
     setDesktopViewport(tester);
     await tester.pumpWidget(createTestApp(const ScanView()));
-    expect(find.textContaining('Full PC Security'), findsOneWidget);
+    expect(find.textContaining('Complete Security'), findsOneWidget);
   });
 
   testWidgets('ThreatIntelView renders without throwing exceptions', (tester) async {
     setDesktopViewport(tester);
     await tester.pumpWidget(createTestApp(const ThreatIntelView()));
-    expect(find.textContaining('Dual-Model Ensemble'), findsOneWidget);
+    expect(find.textContaining('AI Behavioral Anomaly'), findsOneWidget);
   });
 
   testWidgets('PrivacySentinelView renders without throwing exceptions', (tester) async {
@@ -129,6 +129,6 @@ void main() {
   testWidgets('SettingsView renders without throwing exceptions', (tester) async {
     setDesktopViewport(tester);
     await tester.pumpWidget(createTestApp(const SettingsView()));
-    expect(find.textContaining('Agent Preferences'), findsOneWidget);
+    expect(find.textContaining('Operator Preferences'), findsOneWidget);
   });
 }

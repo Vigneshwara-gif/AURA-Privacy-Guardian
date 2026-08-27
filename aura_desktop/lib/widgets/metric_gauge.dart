@@ -30,10 +30,14 @@ class ScoreMetricGauge extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(
-              label,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AuraTheme.textSecondary),
+            Expanded(
+              child: Text(
+                label,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AuraTheme.textSecondary),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
+            const SizedBox(width: 8),
             Text(
               '$score/100',
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: barColor),
