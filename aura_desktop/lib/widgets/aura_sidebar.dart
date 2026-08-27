@@ -16,17 +16,17 @@ class AuraSidebar extends StatelessWidget {
   });
 
   static const List<NavItem> items = [
-    NavItem('Overview', Icons.dashboard_rounded),
+    NavItem('Home', Icons.space_dashboard_rounded),
     NavItem('Security Scan', Icons.security_rounded),
     NavItem('Threat Intelligence', Icons.psychology_rounded),
-    NavItem('Privacy Sentinel', Icons.shield_rounded),
-    NavItem('Process Intelligence', Icons.memory_rounded),
-    NavItem('Network Intelligence', Icons.hub_rounded),
-    NavItem('Persistence', Icons.repeat_rounded),
+    NavItem('Privacy', Icons.videocam_rounded),
+    NavItem('Processes', Icons.memory_rounded),
+    NavItem('Network', Icons.hub_rounded),
+    NavItem('Startup & Services', Icons.repeat_rounded),
+    NavItem('Security Events', Icons.stream_rounded),
     NavItem('Incidents', Icons.emergency_rounded),
-    NavItem('Activity Timeline', Icons.timeline_rounded),
+    NavItem('Timeline', Icons.timeline_rounded),
     NavItem('Reports', Icons.assessment_rounded),
-    NavItem('Alert Center', Icons.notifications_active_rounded),
     NavItem('Settings', Icons.settings_rounded),
   ];
 

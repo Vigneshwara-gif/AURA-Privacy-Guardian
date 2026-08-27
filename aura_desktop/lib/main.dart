@@ -6,6 +6,7 @@ import 'services/websocket_service.dart';
 import 'state/aura_state_provider.dart';
 import 'widgets/aura_sidebar.dart';
 import 'widgets/aura_topbar.dart';
+import 'views/onboarding_view.dart';
 import 'views/overview_view.dart';
 import 'views/scan_view.dart';
 import 'views/threat_intel_view.dart';
@@ -13,10 +14,10 @@ import 'views/privacy_sentinel_view.dart';
 import 'views/process_intel_view.dart';
 import 'views/network_intel_view.dart';
 import 'views/persistence_view.dart';
+import 'views/security_events_view.dart';
 import 'views/incidents_view.dart';
 import 'views/timeline_view.dart';
 import 'views/reports_view.dart';
-import 'views/alerts_view.dart';
 import 'views/settings_view.dart';
 
 void main() {
@@ -62,52 +63,50 @@ class AuraMainShell extends StatefulWidget {
 
 class _AuraMainShellState extends State<AuraMainShell> {
   int _selectedIndex = 0;
-  final TextEditingController _bootstrapCtrl = TextEditingController();
+  bool _isOnboardingActive = false;
 
   @override
   void initState() {
     super.initState();
-    // Auto-connect with local agent session if available or prompt operator
+    // Auto-connect with local agent session
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final state = context.read<AuraStateProvider>();
-      // Attempt connecting with local default or trigger bootstrap
       _attemptLocalConnect(state);
     });
   }
 
   void _attemptLocalConnect(AuraStateProvider state) async {
-    // Try authenticating or load
     final ok = await state.authenticate('LOCAL_OPERATOR_DEV_SESSION');
     if (!ok && mounted) {
-      // Prompt user for bootstrap code
+      setState(() {
+        _isOnboardingActive = true;
+      });
     }
   }
 
-  @override
-  void dispose() {
-    _bootstrapCtrl.dispose();
-    super.dispose();
-  }
-
   static const List<String> sectionTitles = [
-    'Executive Overview',
-    '16-Category Full PC Security Scan',
+    'AURA Command Center',
+    '16-Category Full PC Security Check',
     'Threat Intelligence & Explainable AI',
     'Hardware Privacy Sentinel',
     'Process Intelligence & Execution DNA',
     'Network Intelligence & Socket Flow Topology',
-    'Auto-Start & Persistence Analysis',
+    'Startup & Background Services Analysis',
+    'Real-Time Security Event Center',
     'Incident Studio & Case Management',
     'Forensic Chronological Security Timeline',
     'Executive & Technical Security Reports',
-    'Real-Time Security Alert Center',
     'Agent Policy & System Settings',
   ];
 
   Widget _buildCurrentView() {
     switch (_selectedIndex) {
       case 0:
-        return const OverviewView();
+        return OverviewView(
+          onNavigateToScan: () => setState(() => _selectedIndex = 1),
+          onNavigateToPrivacy: () => setState(() => _selectedIndex = 3),
+          onNavigateToProcesses: () => setState(() => _selectedIndex = 4),
+        );
       case 1:
         return const ScanView();
       case 2:
@@ -121,13 +120,13 @@ class _AuraMainShellState extends State<AuraMainShell> {
       case 6:
         return const PersistenceView();
       case 7:
-        return const IncidentsView();
+        return const SecurityEventsView();
       case 8:
-        return const TimelineView();
+        return const IncidentsView();
       case 9:
-        return const ReportsView();
+        return const TimelineView();
       case 10:
-        return const AlertsView();
+        return const ReportsView();
       case 11:
         return const SettingsView();
       default:
@@ -139,96 +138,13 @@ class _AuraMainShellState extends State<AuraMainShell> {
   Widget build(BuildContext context) {
     final state = context.watch<AuraStateProvider>();
 
-    if (!state.isAuthenticated && state.isLoading) {
-      return const Scaffold(
-        body: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircularProgressIndicator(color: AuraTheme.primaryLight),
-              SizedBox(height: 16),
-              Text('Connecting to AURA Local Engine...', style: TextStyle(color: AuraTheme.textSecondary)),
-            ],
-          ),
-        ),
-      );
-    }
-
-    if (!state.isAuthenticated) {
-      return Scaffold(
-        body: Center(
-          child: Container(
-            width: 420,
-            padding: const EdgeInsets.all(32),
-            decoration: BoxDecoration(
-              color: AuraTheme.surface,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AuraTheme.border),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AuraTheme.primary.withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(Icons.shield_rounded, color: AuraTheme.primaryLight, size: 36),
-                ),
-                const SizedBox(height: 16),
-                const Text('AURA PRIVACY GUARDIAN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 1.5)),
-                const SizedBox(height: 6),
-                if (state.errorMessage != null) ...[
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: AuraTheme.critical.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(color: AuraTheme.critical.withValues(alpha: 0.4)),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.error_outline_rounded, color: AuraTheme.critical, size: 16),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            state.errorMessage!,
-                            style: const TextStyle(fontSize: 11, color: AuraTheme.critical),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 20),
-                TextField(
-                  controller: _bootstrapCtrl,
-                  decoration: InputDecoration(
-                    hintText: 'LOCAL_OPERATOR_DEV_SESSION or Token...',
-                    filled: true,
-                    fillColor: AuraTheme.surfaceElevated,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AuraTheme.primary,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size.fromHeight(44),
-                  ),
-                  onPressed: () {
-                    final code = _bootstrapCtrl.text.trim().isEmpty ? 'LOCAL_OPERATOR_DEV_SESSION' : _bootstrapCtrl.text.trim();
-                    state.authenticate(code);
-                  },
-                  child: const Text('CONNECT LOCAL AGENT', style: TextStyle(fontWeight: FontWeight.w700)),
-                ),
-              ],
-            ),
-          ),
-        ),
+    if (_isOnboardingActive || !state.isAuthenticated) {
+      return OnboardingView(
+        onFinish: () {
+          setState(() {
+            _isOnboardingActive = false;
+          });
+        },
       );
     }
 
@@ -239,26 +155,34 @@ class _AuraMainShellState extends State<AuraMainShell> {
           AuraSidebar(
             selectedIndex: _selectedIndex,
             onItemSelected: (i) => setState(() => _selectedIndex = i),
-            agentStatus: state.wsStatus == WsConnectionStatus.connected ? 'ONLINE' : 'CONNECTING',
+            agentStatus: state.isAuthenticated ? 'ONLINE' : 'OFFLINE',
           ),
 
-          // Main Workspace Region
+          // Main Screen Content Area
           Expanded(
             child: Column(
               children: [
-                // Top App Bar
+                // Top Action Bar
                 AuraTopbar(
                   title: sectionTitles[_selectedIndex],
-                  onQuickScan: () => state.runFullSecurityScan(),
-                  onAlertsTap: () => setState(() => _selectedIndex = 10),
-                  alertCount: state.alerts.where((a) => !a.isAcknowledged).length,
                   isScanning: state.isScanning,
-                  connectionState: state.wsStatus == WsConnectionStatus.connected ? 'LIVE' : 'RECONNECTING',
+                  alertCount: state.alerts.where((a) => !a.isAcknowledged).length,
+                  connectionState: state.isAuthenticated ? 'LIVE' : 'DISCONNECTED',
+                  onQuickScan: () {
+                    setState(() => _selectedIndex = 1);
+                    state.runFullSecurityScan();
+                  },
+                  onAlertsTap: () {
+                    setState(() => _selectedIndex = 7); // Navigate to Security Events
+                  },
                 ),
 
-                // View Content
+                // Active Feature View
                 Expanded(
-                  child: _buildCurrentView(),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    child: _buildCurrentView(),
+                  ),
                 ),
               ],
             ),

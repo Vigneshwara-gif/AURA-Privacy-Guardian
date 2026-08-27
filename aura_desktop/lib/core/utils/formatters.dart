@@ -23,6 +23,10 @@ class Formatters {
     }
   }
 
+  static String bytesToSize(num bytes) => formatBytes(bytes);
+
+  static String formatIsoTimestamp(String? isoString) => formatIso(isoString);
+
   static String formatTimeOnly(String? isoString) {
     if (isoString == null || isoString.isEmpty) return 'N/A';
     try {

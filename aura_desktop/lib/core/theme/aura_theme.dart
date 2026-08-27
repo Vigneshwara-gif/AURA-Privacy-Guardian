@@ -22,6 +22,7 @@ class AuraTheme {
   static const Color critical = Color(0xFFEF4444);       // Red Alert
   static const Color high = Color(0xFFF97316);           // Orange Alert
   static const Color medium = Color(0xFFFBBF24);         // Amber Warning
+  static const Color warning = Color(0xFFFBBF24);        // Warning Amber
   static const Color low = Color(0xFF38BDF8);            // Info Blue
   static const Color info = Color(0xFF94A3B8);           // Neutral Slate
   static const Color healthy = Color(0xFF10B981);        // Success Green

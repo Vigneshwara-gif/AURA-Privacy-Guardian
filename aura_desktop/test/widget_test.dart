@@ -8,8 +8,18 @@ import 'package:aura_desktop/state/aura_state_provider.dart';
 import 'package:aura_desktop/widgets/severity_badge.dart';
 import 'package:aura_desktop/widgets/metric_gauge.dart';
 
+void setDesktopViewport(WidgetTester tester) {
+  tester.view.physicalSize = const Size(1920, 1080);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(() {
+    tester.view.resetPhysicalSize();
+    tester.view.resetDevicePixelRatio();
+  });
+}
+
 void main() {
   testWidgets('AuraDesktopApp renders authentication bootstrap gate', (WidgetTester tester) async {
+    setDesktopViewport(tester);
     final apiService = ApiService();
     final wsService = WebSocketService();
 
@@ -30,7 +40,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('AURA PRIVACY GUARDIAN'), findsOneWidget);
-    expect(find.text('CONNECT LOCAL AGENT'), findsOneWidget);
+    expect(find.text('GET STARTED'), findsOneWidget);
   });
 
   testWidgets('SeverityBadge renders correct text and styling', (WidgetTester tester) async {

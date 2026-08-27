@@ -16,6 +16,8 @@ import 'package:aura_desktop/views/incidents_view.dart';
 import 'package:aura_desktop/views/timeline_view.dart';
 import 'package:aura_desktop/views/reports_view.dart';
 import 'package:aura_desktop/views/alerts_view.dart';
+import 'package:aura_desktop/views/security_events_view.dart';
+import 'package:aura_desktop/views/onboarding_view.dart';
 import 'package:aura_desktop/views/settings_view.dart';
 
 Widget createTestApp(Widget child) {
@@ -47,8 +49,8 @@ void main() {
   testWidgets('OverviewView renders without throwing exceptions', (tester) async {
     setDesktopViewport(tester);
     await tester.pumpWidget(createTestApp(const OverviewView()));
-    expect(find.textContaining('SYSTEM STATUS'), findsOneWidget);
-    expect(find.text('Security Posture Health'), findsOneWidget);
+    expect(find.textContaining('AURA SECURITY STATUS'), findsOneWidget);
+    expect(find.text('Security Health'), findsOneWidget);
   });
 
   testWidgets('ScanView renders without throwing exceptions', (tester) async {
@@ -109,6 +111,19 @@ void main() {
     setDesktopViewport(tester);
     await tester.pumpWidget(createTestApp(const AlertsView()));
     expect(find.textContaining('Real-Time Alert Center'), findsOneWidget);
+  });
+
+  testWidgets('SecurityEventsView renders without throwing exceptions', (tester) async {
+    setDesktopViewport(tester);
+    await tester.pumpWidget(createTestApp(const SecurityEventsView()));
+    expect(find.textContaining('Real-Time Security Event Center'), findsOneWidget);
+  });
+
+  testWidgets('OnboardingView renders without throwing exceptions', (tester) async {
+    setDesktopViewport(tester);
+    await tester.pumpWidget(createTestApp(OnboardingView(onFinish: () {})));
+    expect(find.textContaining('AURA PRIVACY GUARDIAN'), findsOneWidget);
+    expect(find.text('GET STARTED'), findsOneWidget);
   });
 
   testWidgets('SettingsView renders without throwing exceptions', (tester) async {
