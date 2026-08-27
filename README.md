@@ -16,7 +16,8 @@
 - **Unsupervised Anomaly Detection:** Dual-model Isolation Forest and Local Outlier Factor (LOF) multi-dimensional density estimation.
 - **Multi-Signal Threat Correlation:** Contemporaneous correlation of hardware triggers, outbound WAN spikes, and process table velocities.
 - **Hardened Explainable Risk Engine:** Deterministic 0–100 bounded scoring with structured contributor provenance and anti-double-counting.
-- **High-Performance Local API:** Loopback-bound (`127.0.0.1`) REST API and WebSocket real-time event streaming with ephemeral single-use token authentication.
+- **High-Performance Local API:** Loopback-bound (`127.0.0.1:8787`) REST API and WebSocket real-time event streaming with authenticated session management.
+- **Native Flutter Windows Desktop Client:** High-fidelity native Windows desktop application with interactive evidence graphs, Process DNA inspector, socket topology, and full security assessments.
 - **Modern Web Dashboard:** React 19 + TypeScript + Vite user interface with dark/light themes, live monitoring, privacy audits, and activity telemetry.
 
 ---
@@ -27,7 +28,7 @@
 [ Windows OS & Hardware ] ──> [ Sensor Collector ] ──> [ Dynamic Baselines ]
                                                                │
                                                                ▼
-[ React Web Dashboard ] <── [ Loopback REST / WS ] <── [ Correlation & Hardened Risk ]
+[ Flutter Desktop / Web ] <── [ Loopback REST / WS ] <── [ Correlation & Hardened Risk ]
 ```
 
 ---

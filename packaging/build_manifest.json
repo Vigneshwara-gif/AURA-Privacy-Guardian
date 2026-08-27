@@ -1,7 +1,7 @@
 {
   "app_name": "AURA Privacy Guardian",
   "version": "2.0.0",
-  "build_timestamp": "2026-08-27T13:40:03.002253+00:00",
+  "build_timestamp": "2026-08-27T14:31:22.523924+00:00",
   "platform": "Windows",
   "architecture": "64bit",
   "python_version": "3.14.3",
@@ -24,7 +24,7 @@
     },
     "aura_desktop.exe": {
       "relpath": "aura_desktop\\build\\windows\\x64\\runner\\Release\\aura_desktop.exe",
-      "sha256": "fa0bb2d1e17f6b9266c24ed6771d46897e615d408c6992a0d72e3da8cc108241",
+      "sha256": "69bfb4542724f476e17d2c2256e87f2f254efd571512d48f9e9d659916aeb647",
       "size_bytes": 91136
     }
   }

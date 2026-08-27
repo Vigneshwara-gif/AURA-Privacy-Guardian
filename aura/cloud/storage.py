@@ -329,3 +329,20 @@ class CloudStorage:
                 (device_id, user_id),
             )
             return cur.rowcount > 0
+
+    def close(self) -> None:
+        with self._lock:
+            for conn in list(self._all_connections):
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+            self._all_connections.clear()
+            if hasattr(self._local, "connection"):
+                self._local.connection = None
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass

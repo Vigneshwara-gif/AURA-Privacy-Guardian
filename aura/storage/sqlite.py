@@ -572,3 +572,11 @@ class StorageEngine:
                 except Exception:
                     pass
             self._all_connections.clear()
+            if hasattr(self._local, "connection"):
+                self._local.connection = None
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
