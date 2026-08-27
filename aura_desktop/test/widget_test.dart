@@ -37,6 +37,7 @@ void main() {
       ),
     );
 
+    await tester.pump(const Duration(seconds: 3));
     await tester.pumpAndSettle();
 
     expect(find.text('AURA PRIVACY GUARDIAN'), findsOneWidget);

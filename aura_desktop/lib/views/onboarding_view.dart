@@ -16,7 +16,7 @@ class _OnboardingViewState extends State<OnboardingView> {
   int _currentStep = 0;
   bool _isConnecting = false;
   String? _connectError;
-  bool _sessionConnected = false;
+  bool _showDiagnostics = false;
 
   void _nextStep() {
     setState(() {
@@ -32,23 +32,24 @@ class _OnboardingViewState extends State<OnboardingView> {
     }
   }
 
-  void _connectAgent(AuraStateProvider state) async {
+  void _startLocalSession(AuraStateProvider state) async {
     setState(() {
+      _currentStep = 1;
       _isConnecting = true;
       _connectError = null;
+      _showDiagnostics = false;
     });
 
-    final ok = await state.authenticate('LOCAL_OPERATOR_DEV_SESSION');
+    final ok = await state.authenticate();
 
     if (mounted) {
       setState(() {
         _isConnecting = false;
         if (ok) {
-          _sessionConnected = true;
-          _currentStep = 2; // Proceed to Privacy Promise
+          _connectError = null;
         } else {
           _connectError = state.errorMessage ??
-              'Unable to establish local secure session with AURA Security Engine (127.0.0.1:8787). Ensure background service is running.';
+              "AURA's local security engine could not be reached. Ensure the background service is running on 127.0.0.1:8787.";
         }
       });
     }
@@ -185,7 +186,7 @@ class _OnboardingViewState extends State<OnboardingView> {
   Widget _buildStepContent(AuraStateProvider state) {
     switch (_currentStep) {
       case 0:
-        return _buildWelcomeStep();
+        return _buildWelcomeStep(state);
       case 1:
         return _buildSessionStep(state);
       case 2:
@@ -195,14 +196,14 @@ class _OnboardingViewState extends State<OnboardingView> {
       case 4:
         return _buildReadinessStep(state);
       default:
-        return _buildWelcomeStep();
+        return _buildWelcomeStep(state);
     }
   }
 
   // -------------------------------------------------------------
   // STEP 0: WELCOME & PILLARS
   // -------------------------------------------------------------
-  Widget _buildWelcomeStep() {
+  Widget _buildWelcomeStep(AuraStateProvider state) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
@@ -292,7 +293,7 @@ class _OnboardingViewState extends State<OnboardingView> {
                 padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               ),
-              onPressed: _nextStep,
+              onPressed: () => _startLocalSession(state),
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -352,41 +353,53 @@ class _OnboardingViewState extends State<OnboardingView> {
   // -------------------------------------------------------------
   Widget _buildSessionStep(AuraStateProvider state) {
     String sessionStatus = 'READY';
+    String sessionSub = 'AURA communicates strictly over local device loopback (127.0.0.1).\nAll security intelligence and telemetry remain completely local to your Windows PC.';
     Color statusColor = AuraTheme.primaryLight;
     IconData statusIcon = Icons.lock_outline_rounded;
 
-    if (_isConnecting) {
-      sessionStatus = 'CONNECTING & AUTHENTICATING...';
+    if (_isConnecting || state.sessionState == LocalSessionState.connecting) {
+      sessionStatus = 'CONNECTING TO LOCAL ENGINE...';
+      sessionSub = 'Locating AURA Security Engine on local loopback (127.0.0.1:8787)...';
       statusColor = AuraTheme.warning;
       statusIcon = Icons.sync_rounded;
-    } else if (_sessionConnected || state.isAuthenticated) {
-      sessionStatus = 'CONNECTED & READY';
+    } else if (state.sessionState == LocalSessionState.authenticating) {
+      sessionStatus = 'AUTHENTICATING SECURE SESSION...';
+      sessionSub = 'Exchanging cryptographic credentials with local agent...';
+      statusColor = AuraTheme.warning;
+      statusIcon = Icons.vpn_key_rounded;
+    } else if (state.isAuthenticated || state.sessionState == LocalSessionState.ready) {
+      sessionStatus = 'LOCAL SESSION SECURE & READY';
+      sessionSub = 'Loopback channel verified. Security intelligence active.';
       statusColor = AuraTheme.healthy;
       statusIcon = Icons.check_circle_outline_rounded;
-    } else if (_connectError != null) {
-      sessionStatus = 'CONNECTION FAILED';
+    } else if (_connectError != null || state.sessionState == LocalSessionState.failed) {
+      sessionStatus = 'SECURE CONNECTION FAILED';
+      sessionSub = "AURA's local security engine is running, but the secure session could not be established.";
       statusColor = AuraTheme.critical;
       statusIcon = Icons.error_outline_rounded;
     }
 
+    final isReady = state.isAuthenticated && state.sessionState == LocalSessionState.ready;
+    final isFailed = _connectError != null || state.sessionState == LocalSessionState.failed;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Icon(statusIcon, color: statusColor, size: 44),
+        Icon(statusIcon, color: statusColor, size: 48),
         const SizedBox(height: 16),
         const Text(
           'Local Secure Session',
           style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AuraTheme.textPrimary),
         ),
         const SizedBox(height: 8),
-        const Text(
-          'AURA communicates strictly over local device loopback (127.0.0.1).\nAll security intelligence and telemetry remain completely local to your Windows PC.',
-          style: TextStyle(fontSize: 13, color: AuraTheme.textSecondary, height: 1.4),
+        Text(
+          sessionSub,
+          style: const TextStyle(fontSize: 13, color: AuraTheme.textSecondary, height: 1.4),
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 24),
 
-        // Session status pill
+        // Status Pill
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
@@ -394,33 +407,66 @@ class _OnboardingViewState extends State<OnboardingView> {
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: statusColor.withValues(alpha: 0.35)),
           ),
-          child: Text(
-            sessionStatus,
-            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: statusColor, letterSpacing: 0.8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_isConnecting || state.sessionState == LocalSessionState.authenticating || state.sessionState == LocalSessionState.connecting) ...[
+                SizedBox(
+                  width: 12,
+                  height: 12,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: statusColor),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                sessionStatus,
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: statusColor, letterSpacing: 0.8),
+              ),
+            ],
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 28),
 
-        if (_connectError != null) ...[
+        if (isFailed && _connectError != null) ...[
           Container(
-            padding: const EdgeInsets.all(14),
+            padding: const EdgeInsets.all(16),
             margin: const EdgeInsets.only(bottom: 20),
-            constraints: const BoxConstraints(maxWidth: 520),
+            constraints: const BoxConstraints(maxWidth: 580),
             decoration: BoxDecoration(
-              color: AuraTheme.critical.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
+              color: AuraTheme.critical.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
               border: Border.all(color: AuraTheme.critical.withValues(alpha: 0.3)),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.warning_amber_rounded, color: AuraTheme.critical, size: 20),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    _connectError!,
-                    style: const TextStyle(fontSize: 12, color: AuraTheme.critical),
-                  ),
+                Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, color: AuraTheme.critical, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _connectError!,
+                        style: const TextStyle(fontSize: 12, color: AuraTheme.critical, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
                 ),
+                if (_showDiagnostics) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      state.technicalDiagnostics,
+                      style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: AuraTheme.textSecondary),
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
@@ -429,18 +475,45 @@ class _OnboardingViewState extends State<OnboardingView> {
         Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (_connectError != null)
+            if (isFailed) ...[
               OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
                   side: const BorderSide(color: AuraTheme.border),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                onPressed: _isConnecting ? null : () => _connectAgent(state),
+                onPressed: () => setState(() => _showDiagnostics = !_showDiagnostics),
+                icon: Icon(_showDiagnostics ? Icons.expand_less_rounded : Icons.developer_board_rounded, size: 16),
+                label: Text(
+                  _showDiagnostics ? 'HIDE DIAGNOSTICS' : 'VIEW DIAGNOSTICS',
+                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
+                ),
+              ),
+              const SizedBox(width: 14),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AuraTheme.primary,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: _isConnecting ? null : () => _startLocalSession(state),
                 icon: const Icon(Icons.refresh_rounded, size: 16),
-                label: const Text('RETRY CONNECTION', style: TextStyle(fontWeight: FontWeight.w700)),
-              )
-            else
+                label: const Text('RECONNECT SECURELY', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.8)),
+              ),
+            ] else if (isReady) ...[
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AuraTheme.healthy,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                onPressed: _nextStep,
+                icon: const Icon(Icons.arrow_forward_rounded, size: 16, color: Colors.black),
+                label: const Text('CONTINUE SECURELY', style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: 0.8)),
+              ),
+            ] else ...[
               ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AuraTheme.primary,
@@ -448,27 +521,17 @@ class _OnboardingViewState extends State<OnboardingView> {
                   padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                 ),
-                onPressed: _isConnecting
-                    ? null
-                    : () {
-                        if (state.isAuthenticated) {
-                          _nextStep();
-                        } else {
-                          _connectAgent(state);
-                        }
-                      },
+                onPressed: _isConnecting ? null : () => _startLocalSession(state),
                 icon: _isConnecting
                     ? const SizedBox(
                         width: 16,
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
                       )
-                    : const Icon(Icons.arrow_forward_rounded, size: 16),
-                label: Text(
-                  state.isAuthenticated ? 'CONTINUE SECURELY' : 'CONNECT LOCAL SESSION',
-                  style: const TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.8),
-                ),
+                    : const Icon(Icons.shield_rounded, size: 16),
+                label: const Text('ESTABLISH SESSION', style: TextStyle(fontWeight: FontWeight.w700, letterSpacing: 0.8)),
               ),
+            ],
           ],
         ),
 

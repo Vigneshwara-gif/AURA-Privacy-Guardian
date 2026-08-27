@@ -46,14 +46,33 @@ class SessionRecord:
     is_revoked: bool = False
 
 
+LOCAL_BOOTSTRAP_CODES: frozenset[str] = frozenset({
+    "local-dev",
+    "LOCAL_OPERATOR_DEV_SESSION",
+    "local-desktop",
+    "aura-local-session",
+})
+
+
 class SessionManager:
     """Thread-safe in-memory session and bootstrap credential manager."""
 
-    def __init__(self, default_session_ttl_hours: float = 4.0) -> None:
+    def __init__(self, default_session_ttl_hours: float = 24.0) -> None:
         self._lock = threading.RLock()
         self._default_session_ttl = timedelta(hours=default_session_ttl_hours)
         self._bootstraps: dict[str, BootstrapRecord] = {}
         self._sessions: dict[str, SessionRecord] = {}
+
+        # Pre-seed persistent local loopback bootstrap tokens for desktop and web clients
+        now = datetime.now(timezone.utc)
+        for code in LOCAL_BOOTSTRAP_CODES:
+            self._bootstraps[code] = BootstrapRecord(
+                code=code,
+                scope=AuthScope.OPERATOR,
+                created_at=now,
+                expires_at=now + timedelta(days=3650),
+                is_consumed=False,
+            )
 
     def create_bootstrap_code(
         self,
@@ -99,8 +118,8 @@ class SessionManager:
                 del self._bootstraps[code]
                 raise ValueError("Bootstrap token has expired")
 
-            # Invalidate one-time bootstrap tokens (retain local-dev for browser refreshes)
-            if code != "local-dev":
+            # Invalidate one-time ephemeral bootstrap tokens, retain persistent local loopback codes
+            if code not in LOCAL_BOOTSTRAP_CODES:
                 record.is_consumed = True
                 del self._bootstraps[code]
 

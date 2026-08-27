@@ -17,6 +17,14 @@ import '../models/analytics.dart';
 import '../services/api_service.dart';
 import '../services/websocket_service.dart';
 
+enum LocalSessionState {
+  disconnected,
+  connecting,
+  authenticating,
+  ready,
+  failed,
+}
+
 class AuraStateProvider extends ChangeNotifier {
   final ApiService apiService;
   final WebSocketService wsService;
@@ -25,6 +33,8 @@ class AuraStateProvider extends ChangeNotifier {
   bool _isAuthenticated = false;
   bool _isLoading = false;
   String? _errorMessage;
+  String? _lastTechnicalError;
+  LocalSessionState _sessionState = LocalSessionState.disconnected;
 
   // Real-time & Cached Datasets
   SystemTelemetry? _telemetry;
@@ -53,6 +63,7 @@ class AuraStateProvider extends ChangeNotifier {
 
   Timer? _pollingTimer;
   StreamSubscription? _wsSubscription;
+  bool _isAutoRecovering = false;
 
   AuraStateProvider({
     required this.apiService,
@@ -65,6 +76,8 @@ class AuraStateProvider extends ChangeNotifier {
   bool get isAuthenticated => _isAuthenticated;
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
+  String? get lastTechnicalError => _lastTechnicalError;
+  LocalSessionState get sessionState => _sessionState;
   AuthSession? get authSession => _authSession;
   WsConnectionStatus get wsStatus => wsService.status;
 
@@ -90,11 +103,23 @@ class AuraStateProvider extends ChangeNotifier {
   ProcessDNAProfile? get selectedProcessDna => _selectedProcessDna;
   bool get isLoadingDna => _isLoadingDna;
 
+  String get technicalDiagnostics {
+    final sb = StringBuffer();
+    sb.writeln('Engine Endpoint: ${apiService.baseUrl}');
+    sb.writeln('Authenticated: $_isAuthenticated');
+    sb.writeln('Session State: $_sessionState');
+    sb.writeln('Session ID: ${_authSession?.sessionId.substring(0, 8) ?? "None"}...');
+    sb.writeln('WebSocket Status: $wsStatus');
+    if (_lastTechnicalError != null) {
+      sb.writeln('Last Diagnostic Fault: $_lastTechnicalError');
+    }
+    return sb.toString();
+  }
+
   void _initWsListener() {
     _wsSubscription = wsService.eventStream.listen((event) {
       final type = event['type'];
       if (type == 'TELEMETRY_SNAPSHOT' && event['data'] != null) {
-        // Updated live snapshot
         notifyListeners();
       } else if (type == 'ALERT' && event['alert'] != null) {
         try {
@@ -106,30 +131,65 @@ class AuraStateProvider extends ChangeNotifier {
     });
   }
 
-  // 1. Authenticate with Bootstrap Code
-  Future<bool> authenticate(String bootstrapCode) async {
+  // -------------------------------------------------------------
+  // 1. Establish Local Secure Session (with auto-recovery & backoff)
+  // -------------------------------------------------------------
+  Future<bool> authenticate([String? bootstrapCode]) async {
     _isLoading = true;
     _errorMessage = null;
+    _lastTechnicalError = null;
+    _sessionState = LocalSessionState.connecting;
     notifyListeners();
 
-    try {
-      _authSession = await apiService.exchangeBootstrap(bootstrapCode);
-      _isAuthenticated = true;
-      wsService.setSessionToken(_authSession!.sessionId);
-      wsService.connect();
+    int attempts = 0;
+    const maxAttempts = 3;
 
-      await refreshAllData();
-      _startPeriodicPolling();
+    while (attempts < maxAttempts) {
+      attempts++;
+      try {
+        _sessionState = LocalSessionState.authenticating;
+        notifyListeners();
 
-      _isLoading = false;
-      notifyListeners();
-      return true;
-    } catch (e) {
-      _errorMessage = e.toString();
-      _isLoading = false;
-      notifyListeners();
-      return false;
+        _authSession = await apiService.exchangeBootstrap(bootstrapCode);
+        _isAuthenticated = true;
+        _sessionState = LocalSessionState.ready;
+        _errorMessage = null;
+
+        wsService.setSessionToken(_authSession!.sessionId);
+        wsService.connect();
+
+        await refreshAllData();
+        _startPeriodicPolling();
+
+        _isLoading = false;
+        notifyListeners();
+        return true;
+      } on AuraConnectionException catch (e) {
+        _lastTechnicalError = e.technicalDetail ?? e.message;
+        _errorMessage = e.message;
+        if (attempts < maxAttempts) {
+          await Future.delayed(Duration(milliseconds: 400 * attempts));
+        }
+      } on ApiException catch (e) {
+        _lastTechnicalError = e.technicalDetail ?? 'API Status ${e.statusCode}: ${e.message}';
+        _errorMessage = e.message;
+        if (attempts < maxAttempts) {
+          await Future.delayed(Duration(milliseconds: 400 * attempts));
+        }
+      } catch (e) {
+        _lastTechnicalError = e.toString();
+        _errorMessage = 'Could not establish a secure connection to the local AURA security engine.';
+        if (attempts < maxAttempts) {
+          await Future.delayed(Duration(milliseconds: 400 * attempts));
+        }
+      }
     }
+
+    _isAuthenticated = false;
+    _sessionState = LocalSessionState.failed;
+    _isLoading = false;
+    notifyListeners();
+    return false;
   }
 
   void _startPeriodicPolling() {
@@ -146,7 +206,26 @@ class AuraStateProvider extends ChangeNotifier {
       _telemetry = await apiService.getSystemInfo();
       _privacySummary = await apiService.getPrivacySummary();
       notifyListeners();
+    } on AuraSessionExpiredException {
+      _handleSessionExpired();
     } catch (_) {}
+  }
+
+  // Handle transparent background session re-authentication
+  Future<void> _handleSessionExpired() async {
+    if (_isAutoRecovering) return;
+    _isAutoRecovering = true;
+    try {
+      final ok = await authenticate();
+      if (!ok) {
+        _isAuthenticated = false;
+        _sessionState = LocalSessionState.failed;
+        _errorMessage = 'Session expired. Please reconnect to local AURA engine.';
+        notifyListeners();
+      }
+    } finally {
+      _isAutoRecovering = false;
+    }
   }
 
   // Refresh all state
@@ -171,7 +250,9 @@ class AuraStateProvider extends ChangeNotifier {
     }
   }
 
+  // -------------------------------------------------------------
   // 2. Trigger Full Security Scan
+  // -------------------------------------------------------------
   Future<FullScanReport?> runFullSecurityScan() async {
     if (_isScanning) return null;
     _isScanning = true;
@@ -180,7 +261,6 @@ class AuraStateProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      // Simulate stepped progress indicator while backend scan executes
       Timer? stepTimer;
       final categories = [
         'Hardware Security Architecture',
@@ -221,100 +301,105 @@ class AuraStateProvider extends ChangeNotifier {
     }
   }
 
-  // 3. Inspect Process DNA
-  Future<ProcessDNAProfile?> inspectProcessDna(int pid) async {
+  // -------------------------------------------------------------
+  // 3. Process DNA Inspection
+  // -------------------------------------------------------------
+  Future<void> inspectProcessDna(int pid) async {
     _isLoadingDna = true;
+    notifyListeners();
+    try {
+      _selectedProcessDna = await apiService.getProcessDNA(pid);
+    } catch (e) {
+      debugPrint('Process DNA retrieval failed for PID $pid: $e');
+    } finally {
+      _isLoadingDna = false;
+      notifyListeners();
+    }
+  }
+
+  void clearProcessDna() {
     _selectedProcessDna = null;
     notifyListeners();
-
-    try {
-      _selectedProcessDna = await apiService.getProcessDna(pid);
-      _isLoadingDna = false;
-      notifyListeners();
-      return _selectedProcessDna;
-    } catch (e) {
-      _isLoadingDna = false;
-      notifyListeners();
-      return null;
-    }
   }
 
-  // 4. Safe Stop Process
-  Future<bool> terminateProcess(int pid) async {
+  // -------------------------------------------------------------
+  // 4. Safe Response Actions
+  // -------------------------------------------------------------
+  Future<bool> terminateProcess(int pid, [String reason = 'Operator manual termination']) async {
     try {
-      final res = await apiService.terminateProcess(pid);
-      if (res['success'] == true) {
+      final success = await apiService.terminateProcess(pid, reason);
+      if (success) {
         await refreshAllData();
-        return true;
       }
-      return false;
-    } catch (_) {
+      return success;
+    } catch (e) {
+      _errorMessage = 'Process termination failed.';
+      notifyListeners();
       return false;
     }
   }
 
-  // 5. Open Windows Settings Shortcut
-  Future<void> openShortcut(String shortcutType) async {
+  Future<bool> openShortcut(String shortcutType) async {
     try {
-      await apiService.openShortcut(shortcutType);
+      return await apiService.openWindowsShortcut(shortcutType);
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // -------------------------------------------------------------
+  // 5. Incidents, Threat Hunts, Reports
+  // -------------------------------------------------------------
+  Future<bool> updateIncident(String incidentId, String newState) async {
+    try {
+      final success = await apiService.updateIncidentState(incidentId, newState);
+      if (success) {
+        _incidents = await apiService.getIncidents();
+        notifyListeners();
+      }
+      return success;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  Future<bool> updateIncidentState(String incidentId, String newState) async {
+    return updateIncident(incidentId, newState);
+  }
+
+  Future<void> acknowledgeAlert(String alertId) async {
+    try {
+      final success = await apiService.acknowledgeAlert(alertId);
+      if (success) {
+        _alerts = await apiService.getAlerts();
+        notifyListeners();
+      }
     } catch (_) {}
   }
 
-  // 6. Threat Hunting
   Future<void> runThreatHunts() async {
     _isLoading = true;
     notifyListeners();
     try {
       _threatHunts = await apiService.runThreatHunts();
-      _isLoading = false;
-      notifyListeners();
     } catch (e) {
+      _errorMessage = 'Threat hunt execution encountered an issue.';
+    } finally {
       _isLoading = false;
       notifyListeners();
     }
   }
 
-  // 7. Update Incident State
-  Future<bool> updateIncidentState(String incidentId, String newState, {String note = ''}) async {
-    try {
-      final ok = await apiService.updateIncidentState(incidentId, newState, note: note);
-      if (ok) {
-        _incidents = await apiService.getIncidents();
-        notifyListeners();
-      }
-      return ok;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  // 8. Acknowledge Alert
-  Future<bool> acknowledgeAlert(String alertId) async {
-    try {
-      final ok = await apiService.acknowledgeAlert(alertId);
-      if (ok) {
-        _alerts = await apiService.getAlerts();
-        notifyListeners();
-      }
-      return ok;
-    } catch (_) {
-      return false;
-    }
-  }
-
-  // 9. Generate Report
-  Future<SecurityAuditReport?> generateReport() async {
+  Future<void> generateReport() async {
     _isLoading = true;
     notifyListeners();
     try {
       _latestReport = await apiService.generateReport();
-      _isLoading = false;
-      notifyListeners();
-      return _latestReport;
     } catch (e) {
+      _errorMessage = 'Report compilation encountered an issue.';
+    } finally {
       _isLoading = false;
       notifyListeners();
-      return null;
     }
   }
 
@@ -322,7 +407,6 @@ class AuraStateProvider extends ChangeNotifier {
   void dispose() {
     _pollingTimer?.cancel();
     _wsSubscription?.cancel();
-    wsService.dispose();
     super.dispose();
   }
 }
