@@ -34,6 +34,8 @@ from aura.engine.anomaly_ensemble import AnomalyDetectionEnsemble
 from aura.engine.features import FeatureExtractionPipeline
 from aura.engine.rules import SecurityRuleEngine
 from aura.sensors.collector import SensorCollector
+from aura.sensors.camera import CameraIntelligenceCollector
+from aura.sensors.microphone import MicrophoneIntelligenceCollector
 from aura.sensors.event_log import WindowsEventLogCollector
 from aura.sensors.persistence import PersistenceIntelligenceCollector
 from aura.sensors.process_tree import ProcessTreeBuilder
@@ -137,7 +139,9 @@ class FullSecurityScanEngine:
         checks_count += 12
 
         # Category 13: Hardware Privacy Sentinels
-        checks_count += 4
+        cam_snap = CameraIntelligenceCollector.collect_snapshot()
+        mic_snap = MicrophoneIntelligenceCollector.collect_snapshot()
+        checks_count += cam_snap.device_count + mic_snap.device_count + len(cam_snap.recent_usage) + len(mic_snap.recent_usage) + 4
 
         # Category 14: Security Event Logs
         evts = WindowsEventLogCollector.get_recent_system_events(15)

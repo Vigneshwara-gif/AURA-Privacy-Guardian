@@ -1,12 +1,20 @@
 """
-Reliable, non-intrusive Windows camera hardware capability and active usage probe.
+Windows Camera Intelligence & Privacy Sentinel Collector.
+
+Collects genuine Windows camera hardware inventory, system permission state,
+real-time active session attribution (via CapabilityAccessManager ConsentStore
+and live process correlation), recent usage history, and state transitions.
+
+Does NOT capture video frames or record media.
 """
 
 from __future__ import annotations
 
+from dataclasses import asdict, dataclass, field
+from datetime import datetime, timezone
 import logging
 import sys
-from typing import NamedTuple
+from typing import Any
 import psutil
 
 try:
@@ -19,141 +27,319 @@ from aura.models.types import PrivacyHardwareStatus
 logger = logging.getLogger(__name__)
 
 
-class CameraProbeResult(NamedTuple):
+def _filetime_to_iso(ft: int | None) -> str | None:
+    """Convert Windows 64-bit FILETIME (100ns intervals since Jan 1, 1601) to ISO-8601 UTC string."""
+    if not ft or ft <= 0:
+        return None
+    try:
+        epoch_seconds = (ft - 116444736000000000) / 10_000_000.0
+        return datetime.fromtimestamp(epoch_seconds, tz=timezone.utc).isoformat()
+    except Exception:
+        return None
+
+
+@dataclass(slots=True)
+class CameraDevice:
+    """Physical or virtual camera hardware device enumerated from Windows device tree."""
+    index: str
+    name: str
+    provider: str
+    driver_date: str
+    driver_version: str
+    matching_id: str
+    is_present: bool = True
+    is_enabled: bool = True
+
+
+@dataclass(slots=True)
+class RecentCameraAppUsage:
+    """Historical application camera access record from Windows ConsentStore."""
+    app_name: str
+    raw_target: str
+    is_packaged: bool
+    last_used_start: str | None
+    last_used_stop: str | None
+    is_currently_active: bool
+    active_pids: list[int] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class CameraStateTransition:
+    """State transition record when camera status changes."""
+    previous_status: str
+    new_status: str
+    timestamp: str
+    trigger_process: str | None
+
+
+@dataclass(slots=True)
+class CameraIntelligenceSnapshot:
+    """Comprehensive camera hardware, privacy permission, and live session snapshot."""
+    timestamp: str
     status: PrivacyHardwareStatus
     device_count: int
+    devices: list[CameraDevice]
+    system_permission: str  # ALLOWED, DENIED, UNKNOWN
+    is_active: bool
+    active_process_name: str | None
+    active_pids: list[int]
+    active_cmdline: str | None
+    recent_usage: list[RecentCameraAppUsage]
+    last_transition: CameraStateTransition | None
+    confidence: float
+    source: str
     detail: str
-    is_active: bool = False
-    active_process_name: str | None = None
-    active_pids: list[int] = []
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "timestamp": self.timestamp,
+            "status": self.status.value,
+            "device_count": self.device_count,
+            "devices": [asdict(d) for d in self.devices],
+            "system_permission": self.system_permission,
+            "is_active": self.is_active,
+            "active_process_name": self.active_process_name,
+            "active_pids": self.active_pids,
+            "active_cmdline": self.active_cmdline,
+            "recent_usage": [asdict(u) for u in self.recent_usage],
+            "last_transition": asdict(self.last_transition) if self.last_transition else None,
+            "confidence": self.confidence,
+            "source": self.source,
+            "detail": self.detail,
+        }
 
 
-def _check_consent_store_active(capability: str = "webcam") -> tuple[bool, str | None, list[int]]:
-    if winreg is None:
-        return False, None, []
-
-    base_paths = [
-        rf"Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\{capability}",
-        rf"Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\{capability}\NonPackaged",
-    ]
-
-    for base_path in base_paths:
-        try:
-            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, base_path, 0, winreg.KEY_READ) as key:
-                subkeys_count, _, _ = winreg.QueryInfoKey(key)
-                for i in range(subkeys_count):
-                    app_name = winreg.EnumKey(key, i)
-                    if app_name == "NonPackaged":
-                        continue
-                    app_path = f"{base_path}\\{app_name}"
-                    try:
-                        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, app_path, 0, winreg.KEY_READ) as app_key:
-                            try:
-                                last_stop, _ = winreg.QueryValueEx(app_key, "LastUsedTimeStop")
-                                last_start, _ = winreg.QueryValueEx(app_key, "LastUsedTimeStart")
-                                if last_start > 0 and (last_start > last_stop or last_stop == 0):
-                                    decoded_path = app_name.replace("#", "\\")
-                                    exe_name = decoded_path.split("\\")[-1]
-                                    matched_pids = []
-                                    for p in psutil.process_iter(["name"]):
-                                        try:
-                                            pname = p.info.get("name")
-                                            if pname and pname.lower() == exe_name.lower():
-                                                matched_pids.append(p.pid)
-                                        except (psutil.NoSuchProcess, psutil.AccessDenied):
-                                            pass
-                                    if matched_pids:
-                                        return True, exe_name, matched_pids
-                            except OSError:
-                                pass
-                    except OSError:
-                        pass
-        except Exception:
-            pass
-
-    return False, None, []
+# Backwards-compatible NamedTuple alias for earlier probes
+class CameraProbeResult:
+    def __init__(
+        self,
+        status: PrivacyHardwareStatus,
+        device_count: int,
+        detail: str,
+        is_active: bool = False,
+        active_process_name: str | None = None,
+        active_pids: list[int] | None = None,
+    ) -> None:
+        self.status = status
+        self.device_count = device_count
+        self.detail = detail
+        self.is_active = is_active
+        self.active_process_name = active_process_name
+        self.active_pids = active_pids or []
 
 
-def probe_camera_capability() -> CameraProbeResult:
-    if sys.platform != "win32" or winreg is None:
-        return CameraProbeResult(
-            status=PrivacyHardwareStatus.UNAVAILABLE,
-            device_count=0,
-            detail="Windows device registry probe only supported on win32 platform.",
-        )
+class CameraIntelligenceCollector:
+    """Orchestrates genuine Windows camera device discovery and live session tracking."""
 
-    # 1. Active usage check
-    is_active, active_app, active_pids = _check_consent_store_active("webcam")
-    if is_active and active_app:
-        pid_str = f" (PID: {', '.join(map(str, active_pids))})" if active_pids else ""
-        return CameraProbeResult(
-            status=PrivacyHardwareStatus.ACTIVE,
-            device_count=1,
-            detail=f"Active camera video stream session detected in process '{active_app}'{pid_str}.",
-            is_active=True,
-            active_process_name=active_app,
-            active_pids=active_pids,
-        )
+    _last_status: PrivacyHardwareStatus | None = None
+    _last_transition: CameraStateTransition | None = None
 
-    # 2. Hardware enumeration check
-    device_count = 0
-    guid_paths = [
-        r"SYSTEM\CurrentControlSet\Control\Class\{ca3e7ab9-b4c3-4ae6-8251-579ef933890f}",
-        r"SYSTEM\CurrentControlSet\Control\Class\{6bdd1fc6-810f-11d0-bec7-08002be2092f}",
-    ]
+    @classmethod
+    def collect_snapshot(cls) -> CameraIntelligenceSnapshot:
+        now_iso = datetime.now(timezone.utc).isoformat()
 
-    try:
-        for rel_path in guid_paths:
+        if sys.platform != "win32" or winreg is None:
+            return CameraIntelligenceSnapshot(
+                timestamp=now_iso,
+                status=PrivacyHardwareStatus.UNAVAILABLE,
+                device_count=0,
+                devices=[],
+                system_permission="UNKNOWN",
+                is_active=False,
+                active_process_name=None,
+                active_pids=[],
+                active_cmdline=None,
+                recent_usage=[],
+                last_transition=None,
+                confidence=1.0,
+                source="Non-Windows OS Platform",
+                detail="Camera intelligence collection is only supported on Windows host platforms.",
+            )
+
+        # 1. Enumerate Camera Devices from Registry Setup Classes
+        devices: list[CameraDevice] = []
+        guid_classes = [
+            (r"SYSTEM\CurrentControlSet\Control\Class\{ca3e7ab9-b4c3-4ae6-8251-579ef933890f}", "Cameras"),
+            (r"SYSTEM\CurrentControlSet\Control\Class\{6bdd1fc6-810f-11d0-bec7-08002be2092f}", "Imaging Devices"),
+        ]
+
+        for rel_path, _ in guid_classes:
             try:
                 with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, rel_path, 0, winreg.KEY_READ) as key:
                     subkeys_count, _, _ = winreg.QueryInfoKey(key)
                     for i in range(subkeys_count):
-                        try:
-                            subkey_name = winreg.EnumKey(key, i)
-                            if subkey_name.isdigit() and len(subkey_name) == 4:
-                                with winreg.OpenKey(key, subkey_name, 0, winreg.KEY_READ) as dev_key:
-                                    try:
-                                        desc, _ = winreg.QueryValueEx(dev_key, "DriverDesc")
-                                        if desc:
-                                            device_count += 1
-                                    except OSError:
-                                        pass
-                        except OSError:
+                        sk_name = winreg.EnumKey(key, i)
+                        if sk_name.isdigit() and len(sk_name) == 4:
+                            with winreg.OpenKey(key, sk_name, 0, winreg.KEY_READ) as dev_key:
+                                vals: dict[str, Any] = {}
+                                for j in range(winreg.QueryInfoKey(dev_key)[1]):
+                                    vname, vval, _ = winreg.EnumValue(dev_key, j)
+                                    vals[vname] = vval
+                                dname = vals.get("DriverDesc") or vals.get("FriendlyName") or vals.get("DeviceDesc")
+                                if dname:
+                                    devices.append(
+                                        CameraDevice(
+                                            index=sk_name,
+                                            name=str(dname),
+                                            provider=str(vals.get("ProviderName", "Microsoft")),
+                                            driver_date=str(vals.get("DriverDate", "")),
+                                            driver_version=str(vals.get("DriverVersion", "")),
+                                            matching_id=str(vals.get("MatchingDeviceId", "")),
+                                            is_present=True,
+                                            is_enabled=True,
+                                        )
+                                    )
+            except Exception:
+                pass
+
+        # 2. Query Root Privacy Permission State
+        sys_perm = "UNKNOWN"
+        try:
+            with winreg.OpenKey(
+                winreg.HKEY_LOCAL_MACHINE,
+                r"Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam",
+                0,
+                winreg.KEY_READ,
+            ) as perm_key:
+                val, _ = winreg.QueryValueEx(perm_key, "Value")
+                sys_perm = "ALLOWED" if str(val).lower() == "allow" else "DENIED"
+        except Exception:
+            try:
+                with winreg.OpenKey(
+                    winreg.HKEY_CURRENT_USER,
+                    r"Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam",
+                    0,
+                    winreg.KEY_READ,
+                ) as perm_key:
+                    val, _ = winreg.QueryValueEx(perm_key, "Value")
+                    sys_perm = "ALLOWED" if str(val).lower() == "allow" else "DENIED"
+            except Exception:
+                sys_perm = "UNKNOWN"
+
+        # 3. Read Live Usage & Recent Usage from ConsentStore
+        running_procs_map: dict[str, list[psutil.Process]] = {}
+        for p in psutil.process_iter(["name", "exe", "cmdline"]):
+            try:
+                pname = p.info.get("name")
+                if pname:
+                    running_procs_map.setdefault(pname.lower(), []).append(p)
+            except Exception:
+                pass
+
+        recent_usage: list[RecentCameraAppUsage] = []
+        active_app: str | None = None
+        active_pids: list[int] = []
+        active_cmdline: str | None = None
+
+        consent_bases = [
+            r"Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam",
+            r"Software\Microsoft\Windows\CurrentVersion\CapabilityAccessManager\ConsentStore\webcam\NonPackaged",
+        ]
+
+        for base_path in consent_bases:
+            try:
+                with winreg.OpenKey(winreg.HKEY_CURRENT_USER, base_path, 0, winreg.KEY_READ) as key:
+                    subkeys_count, _, _ = winreg.QueryInfoKey(key)
+                    for i in range(subkeys_count):
+                        sk_name = winreg.EnumKey(key, i)
+                        if sk_name == "NonPackaged":
                             continue
-            except FileNotFoundError:
-                continue
-            except PermissionError:
-                return CameraProbeResult(
-                    status=PrivacyHardwareStatus.PERMISSION_LIMITED,
-                    device_count=0,
-                    detail="Access denied reading hardware device registry.",
-                )
+                        app_path = f"{base_path}\\{sk_name}"
+                        try:
+                            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, app_path, 0, winreg.KEY_READ) as app_key:
+                                num_values = winreg.QueryInfoKey(app_key)[1]
+                                val_dict = dict(winreg.EnumValue(app_key, k)[:2] for k in range(num_values))
+                                start = val_dict.get("LastUsedTimeStart", 0)
+                                stop = val_dict.get("LastUsedTimeStop", 0)
 
-        if device_count > 0:
-            return CameraProbeResult(
-                status=PrivacyHardwareStatus.AVAILABLE,
-                device_count=device_count,
-                detail=f"{device_count} camera device(s) enumerated; verified zero active capture sessions.",
-                is_active=False,
-            )
+                                is_flagged = start > 0 and (start > stop or stop == 0)
+                                decoded = sk_name.replace("#", "\\")
+                                exe_name = decoded.split("\\")[-1]
+
+                                matching_procs = running_procs_map.get(exe_name.lower(), [])
+                                is_genuinely_active = is_flagged and len(matching_procs) > 0
+                                pids = [p.pid for p in matching_procs] if is_genuinely_active else []
+
+                                start_iso = _filetime_to_iso(start)
+                                stop_iso = _filetime_to_iso(stop)
+
+                                if start > 0 or stop > 0:
+                                    recent_usage.append(
+                                        RecentCameraAppUsage(
+                                            app_name=sk_name if "#" not in sk_name else exe_name,
+                                            raw_target=decoded,
+                                            is_packaged="#" not in sk_name,
+                                            last_used_start=start_iso,
+                                            last_used_stop=stop_iso,
+                                            is_currently_active=is_genuinely_active,
+                                            active_pids=pids,
+                                        )
+                                    )
+
+                                if is_genuinely_active and not active_app:
+                                    active_app = exe_name
+                                    active_pids = pids
+                                    if matching_procs:
+                                        try:
+                                            cmdline_list = matching_procs[0].cmdline()
+                                            active_cmdline = " ".join(cmdline_list) if cmdline_list else None
+                                        except Exception:
+                                            pass
+                        except Exception:
+                            pass
+            except Exception:
+                pass
+
+        recent_usage.sort(key=lambda u: u.last_used_start or "", reverse=True)
+
+        is_active = active_app is not None and len(active_pids) > 0
+        device_count = len(devices)
+
+        if is_active:
+            status = PrivacyHardwareStatus.ACTIVE
+            detail = f"Active camera video stream session detected in process '{active_app}' (PID: {', '.join(map(str, active_pids))})."
+        elif device_count > 0:
+            status = PrivacyHardwareStatus.AVAILABLE
+            detail = f"{device_count} camera device(s) enumerated; verified zero active capture sessions."
         else:
-            return CameraProbeResult(
-                status=PrivacyHardwareStatus.NOT_DETECTED,
-                device_count=0,
-                detail="No camera hardware devices detected in Windows device tree.",
-                is_active=False,
-            )
+            status = PrivacyHardwareStatus.NOT_DETECTED
+            detail = "No physical camera hardware devices detected in Windows device tree."
 
-    except PermissionError:
-        return CameraProbeResult(
-            status=PrivacyHardwareStatus.PERMISSION_LIMITED,
-            device_count=0,
-            detail="Windows permissions limited access to device enumeration.",
+        if cls._last_status is not None and cls._last_status != status:
+            cls._last_transition = CameraStateTransition(
+                previous_status=cls._last_status.value,
+                new_status=status.value,
+                timestamp=now_iso,
+                trigger_process=active_app,
+            )
+        cls._last_status = status
+
+        return CameraIntelligenceSnapshot(
+            timestamp=now_iso,
+            status=status,
+            device_count=device_count,
+            devices=devices,
+            system_permission=sys_perm,
+            is_active=is_active,
+            active_process_name=active_app,
+            active_pids=active_pids,
+            active_cmdline=active_cmdline,
+            recent_usage=recent_usage[:15],
+            last_transition=cls._last_transition,
+            confidence=0.95,
+            source="Windows CapabilityAccessManager ConsentStore + PnP Setup Class Registry",
+            detail=detail,
         )
-    except Exception as exc:
-        logger.debug("Unexpected error during camera capability probe: %s", exc)
-        return CameraProbeResult(
-            status=PrivacyHardwareStatus.UNKNOWN,
-            device_count=0,
-            detail=f"Camera capability query encountered error: {exc}",
-        )
+
+
+def probe_camera_capability() -> CameraProbeResult:
+    """Backwards-compatible wrapper returning CameraProbeResult."""
+    snap = CameraIntelligenceCollector.collect_snapshot()
+    return CameraProbeResult(
+        status=snap.status,
+        device_count=snap.device_count,
+        detail=snap.detail,
+        is_active=snap.is_active,
+        active_process_name=snap.active_process_name,
+        active_pids=snap.active_pids,
+    )

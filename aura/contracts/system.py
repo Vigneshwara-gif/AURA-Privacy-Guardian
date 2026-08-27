@@ -162,3 +162,99 @@ class FullScanReportResponse(BaseModel):
     composite_risk_score: int
     risk_severity: str
     summary_narrative: str
+
+
+class CameraDeviceResponse(BaseModel):
+    index: str
+    name: str
+    provider: str
+    driver_date: str
+    driver_version: str
+    matching_id: str
+    is_present: bool = True
+    is_enabled: bool = True
+
+
+class RecentCameraAppUsageResponse(BaseModel):
+    app_name: str
+    raw_target: str
+    is_packaged: bool
+    last_used_start: str | None
+    last_used_stop: str | None
+    is_currently_active: bool
+    active_pids: list[int] = Field(default_factory=list)
+
+
+class CameraStateTransitionResponse(BaseModel):
+    previous_status: str
+    new_status: str
+    timestamp: str
+    trigger_process: str | None
+
+
+class CameraIntelligenceResponse(BaseModel):
+    timestamp: str
+    status: str
+    device_count: int
+    devices: list[CameraDeviceResponse] = Field(default_factory=list)
+    system_permission: str
+    is_active: bool
+    active_process_name: str | None
+    active_pids: list[int] = Field(default_factory=list)
+    active_cmdline: str | None
+    recent_usage: list[RecentCameraAppUsageResponse] = Field(default_factory=list)
+    last_transition: CameraStateTransitionResponse | None = None
+    confidence: float
+    source: str
+    detail: str
+
+
+class MicrophoneDeviceResponse(BaseModel):
+    index: str
+    name: str
+    provider: str
+    driver_date: str
+    driver_version: str
+    matching_id: str
+    is_present: bool = True
+    is_enabled: bool = True
+
+
+class RecentMicrophoneAppUsageResponse(BaseModel):
+    app_name: str
+    raw_target: str
+    is_packaged: bool
+    last_used_start: str | None
+    last_used_stop: str | None
+    is_currently_active: bool
+    active_pids: list[int] = Field(default_factory=list)
+
+
+class MicrophoneStateTransitionResponse(BaseModel):
+    previous_status: str
+    new_status: str
+    timestamp: str
+    trigger_process: str | None
+
+
+class MicrophoneIntelligenceResponse(BaseModel):
+    timestamp: str
+    status: str
+    device_count: int
+    devices: list[MicrophoneDeviceResponse] = Field(default_factory=list)
+    system_permission: str
+    is_active: bool
+    active_process_name: str | None
+    active_pids: list[int] = Field(default_factory=list)
+    recent_usage: list[RecentMicrophoneAppUsageResponse] = Field(default_factory=list)
+    last_transition: MicrophoneStateTransitionResponse | None = None
+    confidence: float
+    source: str
+    detail: str
+
+
+class PrivacySentinelSummaryResponse(BaseModel):
+    timestamp: str
+    camera: CameraIntelligenceResponse
+    microphone: MicrophoneIntelligenceResponse
+    overall_privacy_score: int

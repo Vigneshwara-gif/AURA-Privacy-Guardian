@@ -136,4 +136,26 @@ async def test_master_1_system_and_scan_endpoints(tmp_path):
     assert st_find == 200
     assert isinstance(json.loads(res_find), list)
 
+    # 9. Test /privacy/camera
+    st_cam, _, res_cam = await asgi_client(app, "GET", "/api/v1/privacy/camera", headers=auth_headers)
+    assert st_cam == 200
+    cam_json = json.loads(res_cam)
+    assert "devices" in cam_json
+    assert "status" in cam_json
+
+    # 10. Test /privacy/microphone
+    st_mic, _, res_mic = await asgi_client(app, "GET", "/api/v1/privacy/microphone", headers=auth_headers)
+    assert st_mic == 200
+    mic_json = json.loads(res_mic)
+    assert "devices" in mic_json
+    assert "status" in mic_json
+
+    # 11. Test /privacy/summary
+    st_sum, _, res_sum = await asgi_client(app, "GET", "/api/v1/privacy/summary", headers=auth_headers)
+    assert st_sum == 200
+    sum_json = json.loads(res_sum)
+    assert "camera" in sum_json
+    assert "microphone" in sum_json
+    assert 0 <= sum_json["overall_privacy_score"] <= 100
+
     storage.close()

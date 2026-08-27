@@ -33,8 +33,13 @@ from aura.contracts.system import (
     SecurityPostureResponse,
     StartupAppResponse,
     SystemTelemetryResponse,
+    CameraIntelligenceResponse,
+    MicrophoneIntelligenceResponse,
+    PrivacySentinelSummaryResponse,
     WindowsServiceResponse,
 )
+from aura.sensors.camera import CameraIntelligenceCollector
+from aura.sensors.microphone import MicrophoneIntelligenceCollector
 from aura.sensors.event_log import WindowsEventLogCollector
 from aura.sensors.persistence import PersistenceIntelligenceCollector
 from aura.sensors.process_tree import ProcessTreeBuilder
@@ -1053,3 +1058,58 @@ async def update_finding_status(
     if not success:
         raise NotFoundError(f"Finding with ID {finding_id} not found.")
     return {"finding_id": finding_id, "remediation_status": body.remediation_status, "updated": True}
+
+
+@router.get(
+    "/privacy/camera",
+    response_model=CameraIntelligenceResponse,
+    summary="Get genuine Windows camera hardware inventory, permissions, and active/recent usage",
+)
+async def get_camera_intelligence(
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+) -> Any:
+    snap = CameraIntelligenceCollector.collect_snapshot()
+    return snap.to_dict()
+
+
+@router.get(
+    "/privacy/microphone",
+    response_model=MicrophoneIntelligenceResponse,
+    summary="Get genuine Windows microphone audio endpoints, permissions, and active/recent usage",
+)
+async def get_microphone_intelligence(
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+) -> Any:
+    snap = MicrophoneIntelligenceCollector.collect_snapshot()
+    return snap.to_dict()
+
+
+@router.get(
+    "/privacy/summary",
+    response_model=PrivacySentinelSummaryResponse,
+    summary="Get consolidated privacy sentinel health score and hardware telemetry",
+)
+async def get_privacy_summary(
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+) -> Any:
+    cam_snap = CameraIntelligenceCollector.collect_snapshot()
+    mic_snap = MicrophoneIntelligenceCollector.collect_snapshot()
+
+    priv_score = 100
+    if cam_snap.is_active:
+        priv_score -= 30
+    if mic_snap.is_active:
+        priv_score -= 25
+    if cam_snap.system_permission == "DENIED":
+        priv_score -= 10
+    if mic_snap.system_permission == "DENIED":
+        priv_score -= 10
+    priv_score = max(0, min(100, priv_score))
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    return {
+        "timestamp": now_iso,
+        "camera": cam_snap.to_dict(),
+        "microphone": mic_snap.to_dict(),
+        "overall_privacy_score": priv_score,
+    }
