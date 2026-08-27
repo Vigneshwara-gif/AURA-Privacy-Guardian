@@ -49,6 +49,7 @@ class SystemTelemetryResponse(BaseModel):
     swap_total_gb: float
     swap_used_gb: float
     partitions: list[DiskPartitionResponse] = Field(default_factory=list)
+    total_processes: int = Field(default=0)
 
 
 class ProcessTreeNodeResponse(BaseModel):

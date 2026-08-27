@@ -893,6 +893,7 @@ async def get_system_info(
             }
             for p in snap.partitions
         ],
+        "total_processes": snap.total_processes,
     }
 
 

@@ -281,6 +281,44 @@ class _SettingsViewState extends State<SettingsView> {
                 style: TextStyle(fontSize: 13, height: 1.5, color: AuraTheme.textPrimary),
               ),
               const SizedBox(height: 16),
+              _buildSettingRow(
+                title: 'Core Architecture',
+                subtitle: 'Loopback-isolated FastAPI engine (`127.0.0.1:8787`) + Native Flutter Windows desktop shell.',
+                value: 'HYBRID NATIVE',
+              ),
+              const Divider(height: 20, color: AuraTheme.borderSubtle),
+              _buildSettingRow(
+                title: 'Process Intelligence & DNA',
+                subtitle: 'Extracts cryptographic SHA-256 digests, parent-child hierarchies, handles, and network flows.',
+                value: 'ENABLED',
+                valueColor: AuraTheme.healthy,
+              ),
+              const Divider(height: 20, color: AuraTheme.borderSubtle),
+              _buildSettingRow(
+                title: 'Machine Learning Model',
+                subtitle: 'Dual-model unsupervised anomaly detection: Isolation Forest (100 trees) + Local Outlier Factor (LOF).',
+                value: 'IFOREST + LOF',
+              ),
+              const Divider(height: 20, color: AuraTheme.borderSubtle),
+              _buildSettingRow(
+                title: 'SPL Clarification',
+                subtitle: 'AURA relies strictly on standard Windows Win32, Registry, and ETW telemetry primitives—no black-box proprietary language.',
+                value: 'STANDARD WIN32',
+              ),
+              const Divider(height: 20, color: AuraTheme.borderSubtle),
+              _buildSettingRow(
+                title: 'Privacy & Data Protection',
+                subtitle: 'Zero-Media Capture Guarantee: webcam frames and microphone audio waveforms are never recorded or written to disk.',
+                value: 'ZERO-MEDIA ENFORCED',
+                valueColor: AuraTheme.healthy,
+              ),
+              const Divider(height: 20, color: AuraTheme.borderSubtle),
+              _buildSettingRow(
+                title: 'Security Boundaries',
+                subtitle: 'AURA is an intelligence and anomaly detection engine; it does not replace kernel-level EDR or perform disk malware deletion.',
+                value: 'INTELLIGENCE ONLY',
+              ),
+              const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(

@@ -69,6 +69,7 @@ class SystemTelemetrySnapshot:
     swap_total_gb: float = 0.0
     swap_used_gb: float = 0.0
     partitions: list[DiskPartitionInfo] = field(default_factory=list)
+    total_processes: int = 0
 
 
 class SystemIntelligenceCollector:
@@ -171,6 +172,12 @@ class SystemIntelligenceCollector:
         except Exception:
             user = os.environ.get("USERNAME", "SYSTEM")
 
+        total_procs = 0
+        try:
+            total_procs = len(psutil.pids())
+        except Exception:
+            pass
+
         return SystemTelemetrySnapshot(
             timestamp=now_iso,
             os_name=os_name,
@@ -196,4 +203,5 @@ class SystemIntelligenceCollector:
             swap_total_gb=swap_total_gb,
             swap_used_gb=swap_used_gb,
             partitions=partitions_list,
+            total_processes=total_procs,
         )
