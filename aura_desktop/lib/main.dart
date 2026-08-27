@@ -179,12 +179,34 @@ class _AuraMainShellState extends State<AuraMainShell> {
                 const SizedBox(height: 16),
                 const Text('AURA PRIVACY GUARDIAN', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, letterSpacing: 1.5)),
                 const SizedBox(height: 6),
-                const Text('Enter local agent bootstrap authorization code', style: TextStyle(fontSize: 12, color: AuraTheme.textSecondary)),
-                const SizedBox(height: 24),
+                if (state.errorMessage != null) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AuraTheme.critical.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: AuraTheme.critical.withValues(alpha: 0.4)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline_rounded, color: AuraTheme.critical, size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            state.errorMessage!,
+                            style: const TextStyle(fontSize: 11, color: AuraTheme.critical),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 20),
                 TextField(
                   controller: _bootstrapCtrl,
                   decoration: InputDecoration(
-                    hintText: 'Bootstrap Code or Session Token...',
+                    hintText: 'LOCAL_OPERATOR_DEV_SESSION or Token...',
                     filled: true,
                     fillColor: AuraTheme.surfaceElevated,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
@@ -198,10 +220,10 @@ class _AuraMainShellState extends State<AuraMainShell> {
                     minimumSize: const Size.fromHeight(44),
                   ),
                   onPressed: () {
-                    final code = _bootstrapCtrl.text.trim();
-                    if (code.isNotEmpty) state.authenticate(code);
+                    final code = _bootstrapCtrl.text.trim().isEmpty ? 'LOCAL_OPERATOR_DEV_SESSION' : _bootstrapCtrl.text.trim();
+                    state.authenticate(code);
                   },
-                  child: const Text('AUTHENTICATE & LAUNCH', style: TextStyle(fontWeight: FontWeight.w700)),
+                  child: const Text('CONNECT LOCAL AGENT', style: TextStyle(fontWeight: FontWeight.w700)),
                 ),
               ],
             ),

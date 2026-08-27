@@ -500,12 +500,12 @@ async def acknowledge_event(
 # Process Intelligence & Investigation Routes
 # ======================================================================
 
-class TerminateProcessRequest(BaseModel):
+class LegacyTerminateProcessRequest(BaseModel):
     confirm: bool = True
     reason: str = Field(min_length=1, default="Terminated by operator via AURA security action")
 
 
-class OpenShortcutRequest(BaseModel):
+class LegacyOpenShortcutRequest(BaseModel):
     target: str
 
 
@@ -596,7 +596,7 @@ async def investigate_process(
 @router.post("/processes/{pid}/terminate", summary="Safe, user-confirmed process termination")
 async def terminate_process(
     pid: int,
-    body: TerminateProcessRequest,
+    body: LegacyTerminateProcessRequest,
     storage: StorageEngine = Depends(get_storage),
     claims: AuthTokenClaims = Depends(require_scope(AuthScope.OPERATOR)),
 ) -> dict[str, Any]:
@@ -718,7 +718,7 @@ async def get_privacy_shortcuts(
 
 @router.post("/shortcuts/open", summary="Safely open Windows system settings shortcut")
 async def open_shortcut(
-    body: OpenShortcutRequest,
+    body: LegacyOpenShortcutRequest,
     storage: StorageEngine = Depends(get_storage),
     claims: AuthTokenClaims = Depends(require_scope(AuthScope.OPERATOR)),
 ) -> dict[str, str]:

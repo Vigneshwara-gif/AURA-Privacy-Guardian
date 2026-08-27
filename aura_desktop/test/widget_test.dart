@@ -30,7 +30,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('AURA PRIVACY GUARDIAN'), findsOneWidget);
-    expect(find.text('AUTHENTICATE & LAUNCH'), findsOneWidget);
+    expect(find.text('CONNECT LOCAL AGENT'), findsOneWidget);
   });
 
   testWidgets('SeverityBadge renders correct text and styling', (WidgetTester tester) async {

@@ -153,33 +153,18 @@ class AuraStateProvider extends ChangeNotifier {
   Future<void> refreshAllData() async {
     if (!_isAuthenticated) return;
     try {
-      final results = await Future.wait([
-        apiService.getSystemInfo().catchError((_) => _telemetry!),
-        apiService.getSecurityPosture().catchError((_) => _posture!),
-        apiService.getPrivacySummary().catchError((_) => _privacySummary!),
-        apiService.getFindings().catchError((_) => _findings),
-        apiService.investigateNetwork().catchError((_) => _network!),
-        apiService.analyzePersistence().catchError((_) => _persistence!),
-        apiService.getAiExplanation().catchError((_) => _aiExplanation!),
-        apiService.getIncidents().catchError((_) => _incidents),
-        apiService.getTimeline().catchError((_) => _timelineEvents),
-        apiService.getAlerts().catchError((_) => _alerts),
-        apiService.getAnalyticsOverview().catchError((_) => _analytics!),
-      ]);
-
-      _telemetry = results[0] as SystemTelemetry?;
-      _posture = results[1] as SecurityPosture?;
-      _privacySummary = results[2] as PrivacySummary?;
-      _findings = results[3] as List<SecurityFinding>;
-      _network = results[4] as NetworkInvestigation?;
-      _persistence = results[5] as PersistenceAnalysis?;
-      _aiExplanation = results[6] as AnomalyExplanation?;
-      _incidents = results[7] as List<IncidentItem>;
-      _timelineEvents = results[8] as List<TimelineEvent>;
-      _alerts = results[9] as List<SecurityAlertItem>;
-      _analytics = results[10] as AnalyticsOverview?;
-
-      _latestScan = await apiService.getLatestScan().catchError((_) => null);
+      try { _telemetry = await apiService.getSystemInfo(); } catch (_) {}
+      try { _posture = await apiService.getSecurityPosture(); } catch (_) {}
+      try { _privacySummary = await apiService.getPrivacySummary(); } catch (_) {}
+      try { _findings = await apiService.getFindings(); } catch (_) {}
+      try { _network = await apiService.investigateNetwork(); } catch (_) {}
+      try { _persistence = await apiService.analyzePersistence(); } catch (_) {}
+      try { _aiExplanation = await apiService.getAiExplanation(); } catch (_) {}
+      try { _incidents = await apiService.getIncidents(); } catch (_) {}
+      try { _timelineEvents = await apiService.getTimeline(); } catch (_) {}
+      try { _alerts = await apiService.getAlerts(); } catch (_) {}
+      try { _analytics = await apiService.getAnalyticsOverview(); } catch (_) {}
+      try { _latestScan = await apiService.getLatestScan(); } catch (_) {}
       notifyListeners();
     } catch (e) {
       debugPrint('Error refreshing AURA state: $e');

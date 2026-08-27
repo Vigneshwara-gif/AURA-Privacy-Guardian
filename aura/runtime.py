@@ -110,10 +110,15 @@ class AuraRuntime:
     async def start(self) -> None:
         """Start daemon and local API server, maintaining event loop."""
         # Ensure local development bootstrap codes are registered
-        dev_code = self.session_manager.create_bootstrap_code(
+        self.session_manager.create_bootstrap_code(
             scope=AuthScope.OPERATOR,
             ttl_seconds=86400,
             custom_code="local-dev",
+        )
+        self.session_manager.create_bootstrap_code(
+            scope=AuthScope.OPERATOR,
+            ttl_seconds=86400,
+            custom_code="LOCAL_OPERATOR_DEV_SESSION",
         )
         cli_code = self.session_manager.create_bootstrap_code(
             scope=AuthScope.OPERATOR,
