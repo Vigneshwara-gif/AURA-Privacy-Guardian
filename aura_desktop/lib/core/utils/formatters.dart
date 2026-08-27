@@ -27,6 +27,10 @@ class Formatters {
 
   static String formatIsoTimestamp(String? isoString) => formatIso(isoString);
 
+  static String formatTimestamp(DateTime dt) {
+    return DateFormat('HH:mm:ss').format(dt);
+  }
+
   static String formatTimeOnly(String? isoString) {
     if (isoString == null || isoString.isEmpty) return 'N/A';
     try {

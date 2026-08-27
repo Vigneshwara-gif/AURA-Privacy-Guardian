@@ -62,13 +62,12 @@ class AuraMainShell extends StatefulWidget {
 }
 
 class _AuraMainShellState extends State<AuraMainShell> {
-  int _selectedIndex = 0;
   bool _isOnboardingActive = false;
+  bool _isInitialLaunch = true;
 
   @override
   void initState() {
     super.initState();
-    // Auto-connect with local agent session
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final state = context.read<AuraStateProvider>();
       _attemptLocalConnect(state);
@@ -76,17 +75,20 @@ class _AuraMainShellState extends State<AuraMainShell> {
   }
 
   void _attemptLocalConnect(AuraStateProvider state) async {
-    final ok = await state.authenticate('LOCAL_OPERATOR_DEV_SESSION');
-    if (!ok && mounted) {
+    final ok = await state.authenticate();
+    if (mounted) {
       setState(() {
-        _isOnboardingActive = true;
+        _isInitialLaunch = false;
+        if (!ok) {
+          _isOnboardingActive = true;
+        }
       });
     }
   }
 
   static const List<String> sectionTitles = [
     'AURA Command Center',
-    '16-Category Full PC Security Check',
+    'AURA Full Security Assessment',
     'Threat Intelligence & Explainable AI',
     'Hardware Privacy Sentinel',
     'Process Intelligence & Execution DNA',
@@ -99,14 +101,10 @@ class _AuraMainShellState extends State<AuraMainShell> {
     'Agent Policy & System Settings',
   ];
 
-  Widget _buildCurrentView() {
-    switch (_selectedIndex) {
+  Widget _buildCurrentView(int index) {
+    switch (index) {
       case 0:
-        return OverviewView(
-          onNavigateToScan: () => setState(() => _selectedIndex = 1),
-          onNavigateToPrivacy: () => setState(() => _selectedIndex = 3),
-          onNavigateToProcesses: () => setState(() => _selectedIndex = 4),
-        );
+        return const OverviewView();
       case 1:
         return const ScanView();
       case 2:
@@ -140,6 +138,10 @@ class _AuraMainShellState extends State<AuraMainShell> {
   Widget build(BuildContext context) {
     final state = context.watch<AuraStateProvider>();
 
+    if (_isInitialLaunch && state.sessionState == LocalSessionState.connecting) {
+      return _buildLaunchScreen(state);
+    }
+
     if (_isOnboardingActive || !state.isAuthenticated) {
       return OnboardingView(
         onFinish: () {
@@ -150,13 +152,15 @@ class _AuraMainShellState extends State<AuraMainShell> {
       );
     }
 
+    final currentIndex = state.navigationIndex;
+
     return Scaffold(
       body: Row(
         children: [
           // Navigation Sidebar
           AuraSidebar(
-            selectedIndex: _selectedIndex,
-            onItemSelected: (i) => setState(() => _selectedIndex = i),
+            selectedIndex: currentIndex,
+            onItemSelected: (i) => state.navigateTo(i),
             agentStatus: state.isAuthenticated ? 'ONLINE' : 'OFFLINE',
           ),
 
@@ -166,16 +170,16 @@ class _AuraMainShellState extends State<AuraMainShell> {
               children: [
                 // Top Action Bar
                 AuraTopbar(
-                  title: sectionTitles[_selectedIndex],
+                  title: sectionTitles[currentIndex < sectionTitles.length ? currentIndex : 0],
                   isScanning: state.isScanning,
                   alertCount: state.alerts.where((a) => !a.isAcknowledged).length,
                   connectionState: state.isAuthenticated ? 'LIVE' : 'DISCONNECTED',
                   onQuickScan: () {
-                    setState(() => _selectedIndex = 1);
+                    state.navigateTo(1);
                     state.runFullSecurityScan();
                   },
                   onAlertsTap: () {
-                    setState(() => _selectedIndex = 7); // Navigate to Security Events
+                    state.navigateTo(7);
                   },
                 ),
 
@@ -183,13 +187,73 @@ class _AuraMainShellState extends State<AuraMainShell> {
                 Expanded(
                   child: AnimatedSwitcher(
                     duration: const Duration(milliseconds: 200),
-                    child: _buildCurrentView(),
+                    child: _buildCurrentView(currentIndex),
                   ),
                 ),
               ],
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // -------------------------------------------------------------
+  // PHASE 3: RESTRAINED CINEMATIC LAUNCH SCREEN
+  // -------------------------------------------------------------
+  Widget _buildLaunchScreen(AuraStateProvider state) {
+    return Scaffold(
+      backgroundColor: AuraTheme.background,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 72,
+              height: 72,
+              decoration: BoxDecoration(
+                color: AuraTheme.primary.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+                border: Border.all(color: AuraTheme.primaryLight.withValues(alpha: 0.4), width: 1.5),
+              ),
+              child: const Icon(Icons.shield_rounded, color: AuraTheme.primaryLight, size: 40),
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'AURA',
+              style: TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 4.0,
+                color: AuraTheme.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Privacy Guardian',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: AuraTheme.textSecondary,
+                letterSpacing: 1.2,
+              ),
+            ),
+            const SizedBox(height: 32),
+            const SizedBox(
+              width: 140,
+              child: LinearProgressIndicator(
+                minHeight: 3,
+                backgroundColor: AuraTheme.border,
+                valueColor: AlwaysStoppedAnimation<Color>(AuraTheme.primaryLight),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Connecting to local security engine on 127.0.0.1:8787...',
+              style: TextStyle(fontSize: 11, color: AuraTheme.textSecondary, fontFamily: 'monospace'),
+            ),
+          ],
+        ),
       ),
     );
   }

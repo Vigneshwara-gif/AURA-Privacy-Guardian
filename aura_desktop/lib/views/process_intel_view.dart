@@ -31,6 +31,12 @@ class _ProcessIntelViewState extends State<ProcessIntelView> {
     final state = context.watch<AuraStateProvider>();
     final dna = state.selectedProcessDna;
 
+    if (state.targetProcessPid != null && dna?.pid != state.targetProcessPid && !state.isLoadingDna) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        state.inspectProcessDna(state.targetProcessPid!);
+      });
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -253,8 +259,8 @@ class _ProcessIntelViewState extends State<ProcessIntelView> {
 
           // Sub-Tab Content
           if (_selectedTabIndex == 0) _buildIdentityAndExecutionTab(dna),
-          if (_selectedTabIndex == 1) _buildNetworkAndSocketsTab(dna),
-          if (_selectedTabIndex == 2) _buildPersistenceAndPrivacyTab(dna),
+          if (_selectedTabIndex == 1) _buildNetworkAndSocketsTab(dna, state),
+          if (_selectedTabIndex == 2) _buildPersistenceAndPrivacyTab(dna, state),
           if (_selectedTabIndex == 3) _buildAiAndEvidenceTab(dna),
 
           const SizedBox(height: 20),
@@ -398,7 +404,7 @@ class _ProcessIntelViewState extends State<ProcessIntelView> {
   }
 
   // SubTab 1: Network & Sockets
-  Widget _buildNetworkAndSocketsTab(ProcessDNAProfile dna) {
+  Widget _buildNetworkAndSocketsTab(ProcessDNAProfile dna, AuraStateProvider state) {
     final conns = dna.network.connections;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -434,7 +440,18 @@ class _ProcessIntelViewState extends State<ProcessIntelView> {
                 leading: const Icon(Icons.link_rounded, size: 16, color: AuraTheme.primaryLight),
                 title: Text('${c.localAddress}:${c.localPort} ➔ ${c.remoteAddress}:${c.remotePort}', style: const TextStyle(fontSize: 12, fontFamily: 'monospace')),
                 subtitle: Text('Status: ${c.status} • Protocol: ${c.protocol}', style: const TextStyle(fontSize: 10, color: AuraTheme.textSecondary)),
-                trailing: SeverityBadge(severity: c.isPublic ? 'MEDIUM' : 'NORMAL'),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SeverityBadge(severity: c.isPublic ? 'MEDIUM' : 'NORMAL'),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: const Icon(Icons.arrow_forward_rounded, size: 14, color: AuraTheme.primaryLight),
+                      tooltip: 'View in Network Intelligence',
+                      onPressed: () => state.navigateTo(5, targetIp: c.remoteAddress),
+                    ),
+                  ],
+                ),
               );
             },
           ),
@@ -443,15 +460,30 @@ class _ProcessIntelViewState extends State<ProcessIntelView> {
   }
 
   // SubTab 2: Persistence & Privacy
-  Widget _buildPersistenceAndPrivacyTab(ProcessDNAProfile dna) {
+  Widget _buildPersistenceAndPrivacyTab(ProcessDNAProfile dna, AuraStateProvider state) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildDnaField('Auto-Start Location', dna.persistence.startupEntry ?? 'None (Not configured in startup registry)'),
-        _buildDnaField('Windows Service Hook', dna.persistence.serviceName ?? 'None (Standalone user process)'),
-        _buildDnaField('Scheduled Task Link', dna.persistence.scheduledTaskName ?? 'None (No automated scheduled tasks)'),
-        _buildDnaField('Camera Sentinel State', dna.privacy.hasCameraAccess ? 'CAMERA PERMITTED / ACTIVE' : 'NO CAMERA ACCESS DETECTED'),
-        _buildDnaField('Microphone Sentinel State', dna.privacy.hasMicrophoneAccess ? 'MICROPHONE PERMITTED' : 'NO MICROPHONE ACCESS DETECTED'),
+        InkWell(
+          onTap: () => state.navigateTo(6),
+          child: _buildDnaField('Auto-Start Location', '${dna.persistence.startupEntry ?? "None (Not configured in startup registry)"} (Tap to view Persistence)'),
+        ),
+        InkWell(
+          onTap: () => state.navigateTo(6),
+          child: _buildDnaField('Windows Service Hook', '${dna.persistence.serviceName ?? "None (Standalone user process)"} (Tap to view Services)'),
+        ),
+        InkWell(
+          onTap: () => state.navigateTo(6),
+          child: _buildDnaField('Scheduled Task Link', dna.persistence.scheduledTaskName ?? 'None (No automated scheduled tasks)'),
+        ),
+        InkWell(
+          onTap: () => state.navigateTo(3),
+          child: _buildDnaField('Camera Sentinel State', '${dna.privacy.hasCameraAccess ? "CAMERA PERMITTED / ACTIVE" : "NO CAMERA ACCESS DETECTED"} (Tap to view Privacy Sentinel)'),
+        ),
+        InkWell(
+          onTap: () => state.navigateTo(3),
+          child: _buildDnaField('Microphone Sentinel State', '${dna.privacy.hasMicrophoneAccess ? "MICROPHONE PERMITTED" : "NO MICROPHONE ACCESS DETECTED"} (Tap to view Privacy Sentinel)'),
+        ),
       ],
     );
   }

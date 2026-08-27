@@ -35,7 +35,7 @@ class _NetworkIntelViewState extends State<NetworkIntelView> {
           const SizedBox(height: 24),
 
           // 3. Observed Socket Flows & Remote Endpoints
-          _buildSocketFlowsCard(net),
+          _buildSocketFlowsCard(net, state),
         ],
       ),
     );
@@ -169,7 +169,7 @@ class _NetworkIntelViewState extends State<NetworkIntelView> {
   // -------------------------------------------------------------
   // SOCKET FLOWS & OBSERVED ENDPOINTS
   // -------------------------------------------------------------
-  Widget _buildSocketFlowsCard(NetworkInvestigation? net) {
+  Widget _buildSocketFlowsCard(NetworkInvestigation? net, AuraStateProvider state) {
     final endpoints = net?.activeEndpoints ?? [];
 
     final filtered = endpoints.where((e) {
@@ -233,9 +233,26 @@ class _NetworkIntelViewState extends State<NetworkIntelView> {
                               '${e.ip}:${e.port}',
                               style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, fontFamily: 'monospace', color: AuraTheme.textPrimary),
                             ),
-                            Text(
-                              '${e.processName ?? "System"} (PID ${e.pid ?? 0}) • ${e.protocol}',
-                              style: const TextStyle(fontSize: 11, color: AuraTheme.textSecondary),
+                            InkWell(
+                              onTap: e.pid != null ? () => state.navigateTo(4, targetPid: e.pid) : null,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    '${e.processName ?? "System"} (PID ${e.pid ?? 0})',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: e.pid != null ? AuraTheme.primaryLight : AuraTheme.textSecondary,
+                                      fontWeight: e.pid != null ? FontWeight.w700 : FontWeight.w500,
+                                      decoration: e.pid != null ? TextDecoration.underline : TextDecoration.none,
+                                    ),
+                                  ),
+                                  Text(
+                                    ' • ${e.protocol}',
+                                    style: const TextStyle(fontSize: 11, color: AuraTheme.textSecondary),
+                                  ),
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -262,6 +279,14 @@ class _NetworkIntelViewState extends State<NetworkIntelView> {
                           ),
                         ),
                       ),
+                      if (e.pid != null) ...[
+                        const SizedBox(width: 8),
+                        IconButton(
+                          icon: const Icon(Icons.arrow_forward_rounded, size: 14, color: AuraTheme.primaryLight),
+                          tooltip: 'Inspect Process DNA for PID ${e.pid}',
+                          onPressed: () => state.navigateTo(4, targetPid: e.pid),
+                        ),
+                      ],
                     ],
                   ),
                 );

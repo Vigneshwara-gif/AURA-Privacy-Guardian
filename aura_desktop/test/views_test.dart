@@ -50,13 +50,13 @@ void main() {
     setDesktopViewport(tester);
     await tester.pumpWidget(createTestApp(const OverviewView()));
     expect(find.textContaining('AURA SECURITY STATUS'), findsOneWidget);
-    expect(find.text('Security Health'), findsOneWidget);
+    expect(find.textContaining('PROTECTION'), findsOneWidget);
   });
 
   testWidgets('ScanView renders without throwing exceptions', (tester) async {
     setDesktopViewport(tester);
     await tester.pumpWidget(createTestApp(const ScanView()));
-    expect(find.textContaining('Complete Security'), findsOneWidget);
+    expect(find.textContaining('AURA Full Security Assessment'), findsOneWidget);
   });
 
   testWidgets('ThreatIntelView renders without throwing exceptions', (tester) async {

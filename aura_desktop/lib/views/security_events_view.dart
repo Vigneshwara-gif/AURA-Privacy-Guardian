@@ -103,42 +103,132 @@ class _SecurityEventsViewState extends State<SecurityEventsView> {
                       style: TextStyle(color: AuraTheme.textSecondary),
                     ),
                   )
-                : ListView.separated(
+                  : ListView.separated(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     itemCount: filtered.length,
                     separatorBuilder: (_, index) => const Divider(height: 1, color: AuraTheme.borderSubtle),
                     itemBuilder: (context, i) {
                       final ev = filtered[i];
-                      return ListTile(
-                        contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                        leading: SeverityBadge(severity: ev.severity),
-                        title: Text(
-                          ev.title,
-                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AuraTheme.textPrimary),
-                        ),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 4),
-                            Text(ev.summary, style: const TextStyle(fontSize: 12, color: AuraTheme.textSecondary)),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: [
-                                Text('Entity: ${ev.entityName}', style: const TextStyle(fontSize: 11, color: AuraTheme.primaryLight)),
-                                const SizedBox(width: 8),
-                                Text('• Type: ${ev.eventType}', style: const TextStyle(fontSize: 11, color: AuraTheme.textMuted)),
-                              ],
-                            ),
-                          ],
-                        ),
-                        trailing: Text(
-                          Formatters.formatIso(ev.timestamp),
-                          style: const TextStyle(fontSize: 11, color: AuraTheme.textMuted),
+                      return InkWell(
+                        onTap: () => _showEventDetails(context, ev, state),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+                          child: Row(
+                            children: [
+                              SeverityBadge(severity: ev.severity),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      ev.title,
+                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AuraTheme.textPrimary),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(ev.summary, style: const TextStyle(fontSize: 12, color: AuraTheme.textSecondary), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        Text('Entity: ${ev.entityName}', style: const TextStyle(fontSize: 11, color: AuraTheme.primaryLight, fontWeight: FontWeight.w600)),
+                                        const SizedBox(width: 8),
+                                        Text('• Type: ${ev.eventType}', style: const TextStyle(fontSize: 11, color: AuraTheme.textMuted)),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    Formatters.formatIso(ev.timestamp),
+                                    style: const TextStyle(fontSize: 11, color: AuraTheme.textMuted),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AuraTheme.textSecondary),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       );
                     },
                   ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEventDetails(BuildContext context, dynamic ev, AuraStateProvider state) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AuraTheme.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: AuraTheme.border)),
+        title: Row(
+          children: [
+            SeverityBadge(severity: ev.severity),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                ev.title,
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(ev.summary, style: const TextStyle(fontSize: 13, color: AuraTheme.textPrimary, height: 1.4)),
+              const SizedBox(height: 14),
+              const Divider(height: 1, color: AuraTheme.borderSubtle),
+              const SizedBox(height: 12),
+              _buildDetailField('Entity Target', ev.entityName),
+              _buildDetailField('Event Category', ev.eventType),
+              _buildDetailField('Recorded Timestamp', Formatters.formatIso(ev.timestamp)),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('CLOSE', style: TextStyle(color: AuraTheme.textSecondary)),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(backgroundColor: AuraTheme.primary),
+            onPressed: () {
+              Navigator.pop(ctx);
+              state.navigateTo(8); // Navigate to Incidents
+            },
+            icon: const Icon(Icons.assignment_outlined, size: 14, color: Colors.white),
+            label: const Text('CREATE CASE', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailField(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 140,
+            child: Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AuraTheme.textSecondary)),
+          ),
+          Expanded(
+            child: Text(value, style: const TextStyle(fontSize: 12, color: AuraTheme.textPrimary, fontFamily: 'monospace')),
           ),
         ],
       ),
