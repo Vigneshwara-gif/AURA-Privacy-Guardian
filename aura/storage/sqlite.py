@@ -375,6 +375,195 @@ class StorageEngine:
 
         return pruned
 
+
+    def insert_finding(self, finding: dict[str, Any]) -> None:
+        """Insert or replace a security finding."""
+        with self.transaction() as cur:
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO security_findings (
+                    finding_id, timestamp, title, category, severity,
+                    confidence, affected_resource, evidence_json,
+                    explanation, recommendation, remediation_status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """,
+                (
+                    finding["finding_id"],
+                    finding["timestamp"],
+                    finding["title"],
+                    finding["category"],
+                    finding["severity"],
+                    float(finding.get("confidence", 0.95)),
+                    finding.get("affected_resource", "Host OS"),
+                    json.dumps(finding.get("evidence", [])),
+                    finding.get("explanation", ""),
+                    finding.get("recommendation", ""),
+                    finding.get("remediation_status", "OPEN"),
+                ),
+            )
+
+    def get_findings(
+        self,
+        limit: int = 50,
+        severity: str | None = None,
+        status: str | None = None,
+        category: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Query security findings with optional filters."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        try:
+            query = "SELECT * FROM security_findings WHERE 1=1"
+            params: list[Any] = []
+
+            if severity:
+                query += " AND severity = ?"
+                params.append(severity.upper())
+            if status:
+                query += " AND remediation_status = ?"
+                params.append(status.upper())
+            if category:
+                query += " AND category = ?"
+                params.append(category.upper())
+
+            query += " ORDER BY timestamp DESC LIMIT ?;"
+            params.append(max(1, limit))
+
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+
+            findings = []
+            for r in rows:
+                findings.append({
+                    "finding_id": r["finding_id"],
+                    "timestamp": r["timestamp"],
+                    "title": r["title"],
+                    "category": r["category"],
+                    "severity": r["severity"],
+                    "confidence": float(r["confidence"]),
+                    "affected_resource": r["affected_resource"],
+                    "evidence": json.loads(r["evidence_json"] or "[]"),
+                    "explanation": r["explanation"],
+                    "recommendation": r["recommendation"],
+                    "remediation_status": r["remediation_status"],
+                })
+            return findings
+        finally:
+            cursor.close()
+
+    def update_finding_status(self, finding_id: str, new_status: str) -> bool:
+        """Update remediation status of a finding."""
+        with self.transaction() as cur:
+            cur.execute(
+                "UPDATE security_findings SET remediation_status = ? WHERE finding_id = ?;",
+                (new_status.upper(), finding_id),
+            )
+            return cur.rowcount > 0
+
+    def insert_full_scan(self, scan_result: dict[str, Any]) -> None:
+        """Store a full PC security scan result."""
+        with self.transaction() as cur:
+            cur.execute(
+                """
+                INSERT OR REPLACE INTO full_scans (
+                    scan_id, started_at, completed_at, duration_seconds,
+                    total_checks, categories_json, findings_json,
+                    security_score, privacy_score, risk_score, severity,
+                    summary_narrative
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                """,
+                (
+                    scan_result["scan_id"],
+                    scan_result["started_at"],
+                    scan_result["completed_at"],
+                    float(scan_result["duration_seconds"]),
+                    int(scan_result["total_checks_performed"]),
+                    json.dumps(scan_result.get("categories_scanned", [])),
+                    json.dumps(scan_result.get("findings", [])),
+                    int(scan_result["overall_security_score"]),
+                    int(scan_result["privacy_health_score"]),
+                    int(scan_result["composite_risk_score"]),
+                    scan_result["risk_severity"],
+                    scan_result["summary_narrative"],
+                ),
+            )
+            # Also persist all individual findings from the scan
+            for f in scan_result.get("findings", []):
+                cur.execute(
+                    """
+                    INSERT OR REPLACE INTO security_findings (
+                        finding_id, timestamp, title, category, severity,
+                        confidence, affected_resource, evidence_json,
+                        explanation, recommendation, remediation_status
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+                    """,
+                    (
+                        f["finding_id"],
+                        f["timestamp"],
+                        f["title"],
+                        f["category"],
+                        f["severity"],
+                        float(f.get("confidence", 0.95)),
+                        f.get("affected_resource", "Host OS"),
+                        json.dumps(f.get("evidence", [])),
+                        f.get("explanation", ""),
+                        f.get("recommendation", ""),
+                        f.get("remediation_status", "OPEN"),
+                    ),
+                )
+
+    def get_latest_full_scan(self) -> dict[str, Any] | None:
+        """Retrieve most recent full PC security scan."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT * FROM full_scans ORDER BY started_at DESC LIMIT 1;")
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return {
+                "scan_id": row["scan_id"],
+                "started_at": row["started_at"],
+                "completed_at": row["completed_at"],
+                "duration_seconds": float(row["duration_seconds"]),
+                "total_checks_performed": int(row["total_checks"]),
+                "categories_scanned": json.loads(row["categories_json"] or "[]"),
+                "findings": json.loads(row["findings_json"] or "[]"),
+                "overall_security_score": int(row["security_score"]),
+                "privacy_health_score": int(row["privacy_score"]),
+                "composite_risk_score": int(row["risk_score"]),
+                "risk_severity": row["severity"],
+                "summary_narrative": row["summary_narrative"],
+            }
+        finally:
+            cursor.close()
+
+    def get_full_scan_by_id(self, scan_id: str) -> dict[str, Any] | None:
+        """Retrieve specific full PC security scan by ID."""
+        conn = self._get_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT * FROM full_scans WHERE scan_id = ?;", (scan_id,))
+            row = cursor.fetchone()
+            if not row:
+                return None
+            return {
+                "scan_id": row["scan_id"],
+                "started_at": row["started_at"],
+                "completed_at": row["completed_at"],
+                "duration_seconds": float(row["duration_seconds"]),
+                "total_checks_performed": int(row["total_checks"]),
+                "categories_scanned": json.loads(row["categories_json"] or "[]"),
+                "findings": json.loads(row["findings_json"] or "[]"),
+                "overall_security_score": int(row["security_score"]),
+                "privacy_health_score": int(row["privacy_score"]),
+                "composite_risk_score": int(row["risk_score"]),
+                "risk_severity": row["severity"],
+                "summary_narrative": row["summary_narrative"],
+            }
+        finally:
+            cursor.close()
+
     def close(self) -> None:
         with self._lock:
             for conn in list(self._all_connections):

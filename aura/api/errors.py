@@ -122,7 +122,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         correlation_id=correlation_id,
         details={"validation_errors": sanitized_errors},
     )
-    return JSONResponse(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, content=payload.model_dump())
+    return JSONResponse(status_code=422, content=payload.model_dump())
 
 
 async def http_exception_handler(request: Request, exc: StarletteHTTPException) -> JSONResponse:

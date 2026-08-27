@@ -21,6 +21,7 @@ from aura.core.paths import AuraPaths, get_paths
 from aura.engine.baseline import HostBehaviorBaseline
 from aura.engine.correlation import MultiSignalCorrelator
 from aura.engine.risk_hardened import HardenedRiskEngine
+from aura.engine.scan_engine import FullScanResult, FullSecurityScanEngine
 from aura.models.persistence import load_or_train_model
 from aura.models.types import (
     PrivacyHardwareStatus,
@@ -79,6 +80,7 @@ class AuraEngineService:
                 contamination=self.settings.detection.contamination,
             )
 
+        self.scan_engine = FullSecurityScanEngine(collector=self.collector)
         self._is_running = False
 
     def start(self) -> None:
@@ -88,6 +90,7 @@ class AuraEngineService:
 
     def stop(self) -> None:
         """Stop the engine service."""
+        self.scan_engine = FullSecurityScanEngine(collector=self.collector)
         self._is_running = False
         logger.info("AURA Engine Service stopped.")
 
@@ -276,3 +279,35 @@ class AuraEngineService:
             "event_counts_by_severity": event_counts,
             "baselines": self.baseline.get_summary(),
         }
+
+
+    def execute_full_pc_scan(self) -> FullScanResult:
+        """Execute and persist a comprehensive Full PC Security Scan."""
+        res = self.scan_engine.execute_full_scan()
+        try:
+            self.storage.insert_full_scan(res.to_dict())
+        except Exception as exc:
+            logger.error("Failed to persist full scan result: %s", exc)
+        return res
+
+    def get_latest_full_scan(self) -> dict[str, Any] | None:
+        """Retrieve most recent full PC security scan report."""
+        return self.storage.get_latest_full_scan()
+
+    def get_full_scan_by_id(self, scan_id: str) -> dict[str, Any] | None:
+        """Retrieve full scan report by ID."""
+        return self.storage.get_full_scan_by_id(scan_id)
+
+    def get_findings(
+        self,
+        limit: int = 50,
+        severity: str | None = None,
+        status: str | None = None,
+        category: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Retrieve security findings from database."""
+        return self.storage.get_findings(limit=limit, severity=severity, status=status, category=category)
+
+    def update_finding_status(self, finding_id: str, new_status: str) -> bool:
+        """Update remediation status of a finding."""
+        return self.storage.update_finding_status(finding_id=finding_id, new_status=new_status)

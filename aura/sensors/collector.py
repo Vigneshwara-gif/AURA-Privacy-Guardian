@@ -47,6 +47,15 @@ class SensorCollector:
         """
         Collect a full host telemetry snapshot with total sensor isolation.
         """
+        return self._collect_internal(probe_camera=probe_camera, probe_microphone=probe_microphone)
+
+    collect = collect_snapshot
+
+    def _collect_internal(
+        self,
+        probe_camera: bool = False,
+        probe_microphone: bool = False,
+    ) -> TelemetrySnapshot:
         now_iso = datetime.now(timezone.utc).isoformat()
         health_records: list[SensorHealthRecord] = []
         raw_payload: dict[str, Any] = {}

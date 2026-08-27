@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from typing import NamedTuple
 
-CURRENT_SCHEMA_VERSION = 2
+CURRENT_SCHEMA_VERSION = 3
 
 
 class Migration(NamedTuple):
@@ -110,6 +110,47 @@ MIGRATIONS: tuple[Migration, ...] = (
 
         CREATE INDEX IF NOT EXISTS idx_audit_logs_timestamp ON audit_logs(timestamp);
         CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action);
+        """,
+    ),
+    Migration(
+        version=3,
+        description="Unified security findings and full PC security scans",
+        up_sql="""
+        CREATE TABLE IF NOT EXISTS security_findings (
+            finding_id TEXT PRIMARY KEY,
+            timestamp TEXT NOT NULL,
+            title TEXT NOT NULL,
+            category TEXT NOT NULL,
+            severity TEXT NOT NULL,
+            confidence REAL NOT NULL,
+            affected_resource TEXT NOT NULL,
+            evidence_json TEXT NOT NULL,
+            explanation TEXT NOT NULL,
+            recommendation TEXT NOT NULL,
+            remediation_status TEXT NOT NULL DEFAULT 'OPEN'
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_findings_timestamp ON security_findings(timestamp);
+        CREATE INDEX IF NOT EXISTS idx_findings_severity ON security_findings(severity);
+        CREATE INDEX IF NOT EXISTS idx_findings_category ON security_findings(category);
+        CREATE INDEX IF NOT EXISTS idx_findings_status ON security_findings(remediation_status);
+
+        CREATE TABLE IF NOT EXISTS full_scans (
+            scan_id TEXT PRIMARY KEY,
+            started_at TEXT NOT NULL,
+            completed_at TEXT NOT NULL,
+            duration_seconds REAL NOT NULL,
+            total_checks INTEGER NOT NULL,
+            categories_json TEXT NOT NULL,
+            findings_json TEXT NOT NULL,
+            security_score INTEGER NOT NULL,
+            privacy_score INTEGER NOT NULL,
+            risk_score INTEGER NOT NULL,
+            severity TEXT NOT NULL,
+            summary_narrative TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_full_scans_started ON full_scans(started_at);
         """,
     ),
 )

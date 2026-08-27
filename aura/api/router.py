@@ -24,6 +24,23 @@ from fastapi import (
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
+from aura.contracts.system import (
+    FullScanReportResponse,
+    PersistenceInventoryResponse,
+    ProcessTreeNodeResponse,
+    ScheduledTaskResponse,
+    SecurityFindingModel,
+    SecurityPostureResponse,
+    StartupAppResponse,
+    SystemTelemetryResponse,
+    WindowsServiceResponse,
+)
+from aura.sensors.event_log import WindowsEventLogCollector
+from aura.sensors.persistence import PersistenceIntelligenceCollector
+from aura.sensors.process_tree import ProcessTreeBuilder
+from aura.sensors.security_posture import SecurityPostureCollector
+from aura.sensors.system_intel import SystemIntelligenceCollector
+
 from aura.api.auth import SessionManager
 from aura.api.dependencies import (
     get_current_claims,
@@ -486,6 +503,33 @@ async def list_processes(
     ]
 
 
+@router.get(
+    "/processes/tree",
+    response_model=list[ProcessTreeNodeResponse],
+    summary="Get full hierarchical parent-child Windows process tree",
+)
+async def get_process_tree(
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+) -> Any:
+    roots = ProcessTreeBuilder.get_process_tree()
+    return [r.to_dict() for r in roots]
+
+
+@router.get(
+    "/processes/{pid}/tree",
+    response_model=ProcessTreeNodeResponse,
+    summary="Get process tree subtree rooted at a specific PID",
+)
+async def get_process_subtree(
+    pid: int,
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+) -> Any:
+    node = ProcessTreeBuilder.get_process_subtree(pid)
+    if not node:
+        raise NotFoundError(f"Process with PID {pid} not found in process tree.")
+    return node.to_dict()
+
+
 @router.get("/processes/{pid}", summary="Detailed process investigation")
 async def investigate_process(
     pid: int,
@@ -764,3 +808,248 @@ async def stream_endpoint(
             if not t.done():
                 t.cancel()
         await stream_manager.remove_client(client_id)
+
+
+# ==============================================================================
+# MASTER 1: CORE WINDOWS SECURITY ENGINE ENDPOINTS
+# ==============================================================================
+
+@router.get(
+    "/system/info",
+    response_model=SystemTelemetryResponse,
+    summary="Get comprehensive real Windows system telemetry and hardware metrics",
+)
+async def get_system_info(
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+) -> Any:
+    snap = SystemIntelligenceCollector.collect_snapshot()
+    return {
+        "timestamp": snap.timestamp,
+        "os_name": snap.os_name,
+        "os_version": snap.os_version,
+        "os_build": snap.os_build,
+        "os_display_version": snap.os_display_version,
+        "architecture": snap.architecture,
+        "hostname": snap.hostname,
+        "logged_in_user": snap.logged_in_user,
+        "boot_time_iso": snap.boot_time_iso,
+        "uptime_seconds": snap.uptime_seconds,
+        "cpu_model": snap.cpu_model,
+        "cpu_physical_cores": snap.cpu_physical_cores,
+        "cpu_logical_cores": snap.cpu_logical_cores,
+        "cpu_frequency_current_mhz": snap.cpu_frequency_current_mhz,
+        "cpu_frequency_max_mhz": snap.cpu_frequency_max_mhz,
+        "cpu_overall_percent": snap.cpu_overall_percent,
+        "cpu_cores": [{"core_index": c.core_index, "utilization_percent": c.utilization_percent} for c in snap.cpu_cores],
+        "memory_total_gb": snap.memory_total_gb,
+        "memory_used_gb": snap.memory_used_gb,
+        "memory_available_gb": snap.memory_available_gb,
+        "memory_percent": snap.memory_percent,
+        "swap_total_gb": snap.swap_total_gb,
+        "swap_used_gb": snap.swap_used_gb,
+        "partitions": [
+            {
+                "mountpoint": p.mountpoint,
+                "device": p.device,
+                "fstype": p.fstype,
+                "total_gb": p.total_gb,
+                "used_gb": p.used_gb,
+                "free_gb": p.free_gb,
+                "percent": p.percent,
+            }
+            for p in snap.partitions
+        ],
+    }
+
+
+
+
+@router.get(
+    "/persistence/inventory",
+    response_model=PersistenceInventoryResponse,
+    summary="Get consolidated persistence inventory (Startup apps, Services, Tasks)",
+)
+async def get_persistence_inventory(
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+) -> Any:
+    snap = PersistenceIntelligenceCollector.collect_inventory()
+    return {
+        "timestamp": snap.timestamp,
+        "startup_apps": [
+            {
+                "name": a.name,
+                "command": a.command,
+                "source_location": a.source_location,
+                "user_context": a.user_context,
+                "is_enabled": a.is_enabled,
+                "executable_path": a.executable_path,
+                "exists_on_disk": a.exists_on_disk,
+            }
+            for a in snap.startup_apps
+        ],
+        "services_count": snap.services_count,
+        "running_services_count": snap.running_services_count,
+        "services": [
+            {
+                "name": s.name,
+                "display_name": s.display_name,
+                "status": s.status,
+                "start_type": s.start_type,
+                "bin_path": s.bin_path,
+                "username": s.username,
+            }
+            for s in snap.services
+        ],
+        "scheduled_tasks_count": snap.scheduled_tasks_count,
+        "scheduled_tasks": [
+            {
+                "task_name": t.task_name,
+                "next_run_time": t.next_run_time,
+                "status": t.status,
+                "author": t.author,
+            }
+            for t in snap.scheduled_tasks
+        ],
+    }
+
+
+@router.get(
+    "/security/posture",
+    response_model=SecurityPostureResponse,
+    summary="Get real Windows Defender, Firewall, Update, SecureBoot, and UAC security posture",
+)
+async def get_security_posture(
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+) -> Any:
+    snap = SecurityPostureCollector.collect_posture()
+    return {
+        "timestamp": snap.timestamp,
+        "defender": {
+            "is_installed": snap.defender.is_installed,
+            "antivirus_enabled": snap.defender.antivirus_enabled,
+            "realtime_protection_enabled": snap.defender.realtime_protection_enabled,
+            "ioav_protection_enabled": snap.defender.ioav_protection_enabled,
+            "antispyware_enabled": snap.defender.antispyware_enabled,
+            "signature_version": snap.defender.signature_version,
+            "quick_scan_age_days": snap.defender.quick_scan_age_days,
+            "full_scan_age_days": snap.defender.full_scan_age_days,
+        },
+        "firewall": {
+            "domain_profile_enabled": snap.firewall.domain_profile_enabled,
+            "private_profile_enabled": snap.firewall.private_profile_enabled,
+            "public_profile_enabled": snap.firewall.public_profile_enabled,
+            "all_profiles_secure": snap.firewall.all_profiles_secure,
+        },
+        "is_reboot_pending": snap.update_posture.is_reboot_pending,
+        "reboot_reasons": snap.update_posture.reboot_reasons,
+        "secure_boot_enabled": snap.secure_boot_enabled,
+        "tpm_present": snap.tpm_present,
+        "uac_enabled": snap.uac_enabled,
+        "overall_posture_score": snap.overall_posture_score,
+    }
+
+
+@router.get(
+    "/security/events/system-logs",
+    summary="Get recent Windows Security & System event log items",
+)
+async def get_system_log_events(
+    count: int = Query(default=10, ge=1, le=100),
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+) -> Any:
+    events = WindowsEventLogCollector.get_recent_system_events(count=count)
+    return [
+        {
+            "event_id": e.event_id,
+            "log_name": e.log_name,
+            "provider": e.provider,
+            "timestamp": e.timestamp,
+            "level": e.level,
+            "user_name": e.user_name,
+            "computer": e.computer,
+            "description": e.description,
+        }
+        for e in events
+    ]
+
+
+@router.post(
+    "/scan/full",
+    response_model=FullScanReportResponse,
+    summary="Trigger a comprehensive 16-category Full PC Security Scan",
+)
+async def trigger_full_pc_scan(
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.OPERATOR)),
+    engine: AuraEngineService = Depends(get_engine),
+) -> Any:
+    res = engine.execute_full_pc_scan()
+    return res.to_dict()
+
+
+@router.get(
+    "/scan/full/latest",
+    response_model=FullScanReportResponse,
+    summary="Get the most recent Full PC Security Scan report",
+)
+async def get_latest_full_scan(
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+    engine: AuraEngineService = Depends(get_engine),
+) -> Any:
+    res = engine.get_latest_full_scan()
+    if not res:
+        # Run a scan if none has run yet
+        fresh = engine.execute_full_pc_scan()
+        return fresh.to_dict()
+    return res
+
+
+@router.get(
+    "/scan/full/{scan_id}",
+    response_model=FullScanReportResponse,
+    summary="Get specific Full PC Security Scan report by ID",
+)
+async def get_full_scan_by_id(
+    scan_id: str,
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+    engine: AuraEngineService = Depends(get_engine),
+) -> Any:
+    res = engine.get_full_scan_by_id(scan_id)
+    if not res:
+        raise NotFoundError(f"Scan with ID {scan_id} not found.")
+    return res
+
+
+@router.get(
+    "/security/findings",
+    response_model=list[SecurityFindingModel],
+    summary="Query unified security findings from full PC audits and rules",
+)
+async def get_security_findings(
+    limit: int = Query(default=50, ge=1, le=200),
+    severity: str | None = Query(default=None),
+    status: str | None = Query(default=None),
+    category: str | None = Query(default=None),
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+    engine: AuraEngineService = Depends(get_engine),
+) -> Any:
+    return engine.get_findings(limit=limit, severity=severity, status=status, category=category)
+
+
+class UpdateFindingStatusRequest(BaseModel):
+    remediation_status: Literal["OPEN", "INVESTIGATING", "RESOLVED", "IGNORED"]
+
+
+@router.post(
+    "/security/findings/{finding_id}/status",
+    summary="Update remediation status for a security finding",
+)
+async def update_finding_status(
+    finding_id: str,
+    body: UpdateFindingStatusRequest,
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.OPERATOR)),
+    engine: AuraEngineService = Depends(get_engine),
+) -> Any:
+    success = engine.update_finding_status(finding_id=finding_id, new_status=body.remediation_status)
+    if not success:
+        raise NotFoundError(f"Finding with ID {finding_id} not found.")
+    return {"finding_id": finding_id, "remediation_status": body.remediation_status, "updated": True}

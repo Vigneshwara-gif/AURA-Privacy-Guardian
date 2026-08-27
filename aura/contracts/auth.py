@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 
 class AuthScope(str, Enum):
     READ_ONLY = "READ_ONLY"
+    VIEWER = "READ_ONLY"
     OPERATOR = "OPERATOR"
     ADMIN = "ADMIN"
 
