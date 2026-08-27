@@ -160,9 +160,10 @@ class FullSecurityScanEngine:
         )
 
         for rf in rule_findings:
+            f_slug = hashlib.sha256(f"{rf.category}:{rf.title}".encode("utf-8")).hexdigest()[:8].upper()
             findings.append(
                 SecurityFindingModel(
-                    finding_id=f"FND-{uuid.uuid4().hex[:8].upper()}",
+                    finding_id=f"FND-{f_slug}",
                     timestamp=start_iso,
                     title=rf.title,
                     category=rf.category,
@@ -180,7 +181,7 @@ class FullSecurityScanEngine:
         if ml_result.is_anomaly:
             findings.append(
                 SecurityFindingModel(
-                    finding_id=f"FND-{uuid.uuid4().hex[:8].upper()}",
+                    finding_id="FND-AI-ANOMALY-ENSEMBLE",
                     timestamp=start_iso,
                     title="Behavioral Telemetry Anomaly Detected by Ensemble",
                     category="AI_ANOMALY",

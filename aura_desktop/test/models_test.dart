@@ -302,4 +302,64 @@ void main() {
     });
     expect(an.currentSecurityScore, 100);
   });
+
+  test('SystemTelemetry process count resolution and fallback', () {
+    final t1 = SystemTelemetry.fromJson({
+      'timestamp': '2026-08-27T16:00:00Z',
+      'total_processes': 378,
+      'cpu_overall_percent': 15.2,
+      'memory_used_gb': 12.5,
+      'memory_total_gb': 16.0,
+    });
+    expect(t1.processCount, 378);
+    expect(t1.totalProcesses, 378);
+
+    final t2 = SystemTelemetry.fromJson({
+      'timestamp': '2026-08-27T16:00:00Z',
+      'active_processes': 142,
+    });
+    expect(t2.processCount, 142);
+  });
+
+  test('Camera and Microphone device list and summary state consistency', () {
+    final cam = CameraIntelligence.fromJson({
+      'timestamp': '2026-08-27T16:00:00Z',
+      'status': 'AVAILABLE',
+      'devices': [
+        {'index': '0', 'name': 'HP HD Camera', 'provider': 'Microsoft', 'driver_version': '10.0', 'matching_id': 'USB\\VID_04F2'}
+      ],
+      'system_permission': 'ALLOWED',
+      'is_active': false,
+    });
+    expect(cam.deviceCount, 1);
+    expect(cam.summaryState, 'Ready & Idle');
+
+    final mic = MicrophoneIntelligence.fromJson({
+      'timestamp': '2026-08-27T16:00:00Z',
+      'status': 'AVAILABLE',
+      'endpoints': [
+        {'index': '001', 'name': 'Realtek Audio', 'provider': 'Realtek', 'driver_version': '6.0', 'matching_id': 'HDAUDIO\\FUNC_01'}
+      ],
+      'system_permission': 'ALLOWED',
+      'is_active': false,
+    });
+    expect(mic.deviceCount, 1);
+    expect(mic.summaryState, 'Ready & Idle');
+  });
+
+  test('NetworkInvestigation count getters', () {
+    final net = NetworkInvestigation.fromJson({
+      'timestamp': '2026-08-27T16:00:00Z',
+      'total_connections': 175,
+      'established_count': 43,
+      'listening_count': 38,
+      'remote_public_count': 15,
+      'active_endpoints': [],
+      'exposure_findings': [],
+      'summary': '175 sockets evaluated',
+    });
+    expect(net.activeConnectionsCount, 175);
+    expect(net.listeningPortsCount, 38);
+    expect(net.publicIpCount, 15);
+  });
 }

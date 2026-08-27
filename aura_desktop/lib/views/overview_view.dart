@@ -51,12 +51,13 @@ class OverviewView extends StatelessWidget {
       statusIcon = Icons.radar_rounded;
     } else if (compRisk >= 60 || findings.any((f) => f.severity == 'CRITICAL' || f.severity == 'HIGH')) {
       statusTitle = 'INVESTIGATION REQUIRED';
-      statusWhy = 'AURA identified high-severity configuration risks or behavioral deviations on this PC.';
+      statusWhy = 'AURA identified high-severity configuration risks or active deviations requiring investigation.';
       statusColor = AuraTheme.critical;
       statusIcon = Icons.warning_amber_rounded;
-    } else if (secScore < 85 || findings.isNotEmpty) {
+    } else if (findings.isNotEmpty) {
       statusTitle = 'ATTENTION REQUIRED';
-      statusWhy = 'Windows security posture or active privacy permissions have advisory items to review.';
+      final topF = findings.first;
+      statusWhy = 'Your PC is protected, with ${findings.length == 1 ? "1 item" : "${findings.length} items"} worth reviewing: ${topF.title}. No confirmed compromise detected.';
       statusColor = AuraTheme.warning;
       statusIcon = Icons.info_outline_rounded;
     } else {
@@ -65,6 +66,9 @@ class OverviewView extends StatelessWidget {
       statusColor = AuraTheme.healthy;
       statusIcon = Icons.verified_user_rounded;
     }
+
+    final hasAnomaly = state.aiExplanation?.isAnomaly == true || findings.any((f) => f.category == 'AI_ANOMALY');
+    final riskyExposures = state.network?.exposureFindings.where((f) => f.severity == 'HIGH' || f.severity == 'CRITICAL').length ?? 0;
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -218,13 +222,13 @@ class OverviewView extends StatelessWidget {
                 child: _buildPostureQuadrant(
                   icon: Icons.psychology_outlined,
                   title: 'BEHAVIOUR',
-                  scoreLabel: compRisk > 40 ? 'DEVIATION' : 'NOMINAL',
-                  statusText: compRisk > 40 ? 'Deviation From Baseline' : 'Nominal Statistical Envelope',
-                  isHealthy: compRisk <= 40,
+                  scoreLabel: hasAnomaly ? 'REVIEW' : 'NOMINAL',
+                  statusText: hasAnomaly ? 'Statistical Deviation Observed' : 'Nominal Behavioral Baseline',
+                  isHealthy: !hasAnomaly,
                   subItems: [
-                    'Baseline: Tracking 10-D Envelopes',
-                    'Isolation Forest: Evaluated',
-                    'LOF Density: Monitored',
+                    'Baseline: 10-D Welford Tracking',
+                    'Current: ${hasAnomaly ? (state.aiExplanation?.primarySignal ?? "Deviation Noted") : "Nominal Envelope"}',
+                    'AI Model: Isolation Forest + LOF',
                   ],
                   onTap: () => state.navigateTo(2),
                 ),
@@ -236,13 +240,13 @@ class OverviewView extends StatelessWidget {
                 child: _buildPostureQuadrant(
                   icon: Icons.hub_outlined,
                   title: 'EXPOSURE',
-                  scoreLabel: (state.network?.publicIpCount ?? 0) > 10 ? 'ELEVATED' : 'LOW',
+                  scoreLabel: riskyExposures > 0 ? 'ELEVATED' : ((state.network?.publicIpCount ?? 0) > 20 ? 'MODERATE' : 'LOW'),
                   statusText: '${state.network?.activeConnectionsCount ?? 0} Sockets Observed',
-                  isHealthy: (state.network?.publicIpCount ?? 0) < 10,
+                  isHealthy: riskyExposures == 0,
                   subItems: [
-                    'Public WAN: ${state.network?.publicIpCount ?? 0} Endpoints',
-                    'Listeners: ${state.network?.listeningPortsCount ?? 0} Ports Open',
-                    'Risk Exposures: 0 Confirmed',
+                    'Public WAN: ${state.network?.publicIpCount ?? 0} Destinations',
+                    'Listeners: ${state.network?.listeningPortsCount ?? 0} Endpoints',
+                    'High-Risk: $riskyExposures Confirmed',
                   ],
                   onTap: () => state.navigateTo(5),
                 ),
@@ -356,8 +360,10 @@ class OverviewView extends StatelessWidget {
                           Expanded(
                             child: _buildMetricTile(
                               'Processes',
-                              '${telem?.processCount ?? 0}',
-                              'Active Tree',
+                              telem == null
+                                  ? (state.isLoading ? 'LOADING...' : 'UNAVAILABLE')
+                                  : (telem.processCount > 0 ? '${telem.processCount}' : '0'),
+                              'Active Win32 Tree',
                               Icons.memory_rounded,
                               () => state.navigateTo(4),
                             ),
@@ -366,7 +372,9 @@ class OverviewView extends StatelessWidget {
                           Expanded(
                             child: _buildMetricTile(
                               'CPU Load',
-                              '${(telem?.cpuPercent ?? 0).toStringAsFixed(1)}%',
+                              telem == null
+                                  ? (state.isLoading ? 'LOADING...' : 'UNAVAILABLE')
+                                  : '${telem.cpuPercent.toStringAsFixed(1)}%',
                               'Utilization',
                               Icons.insights_rounded,
                               null,
@@ -380,8 +388,10 @@ class OverviewView extends StatelessWidget {
                           Expanded(
                             child: _buildMetricTile(
                               'RAM Used',
-                              Formatters.formatBytes(telem?.memoryUsedBytes ?? 0),
-                              'Physical RAM',
+                              telem == null
+                                  ? (state.isLoading ? 'LOADING...' : 'UNAVAILABLE')
+                                  : Formatters.formatBytes(telem.memoryUsedBytes),
+                              'Physical RAM (${telem?.memoryPercent.toStringAsFixed(0) ?? 0}%)',
                               Icons.storage_rounded,
                               null,
                             ),
@@ -390,8 +400,10 @@ class OverviewView extends StatelessWidget {
                           Expanded(
                             child: _buildMetricTile(
                               'Camera / Mic',
-                              priv?.camera.isActive == true ? 'Active' : 'Idle',
-                              'Hardware Sentinel',
+                              priv == null
+                                  ? (state.isLoading ? 'LOADING...' : 'READY')
+                                  : (priv.camera.isActive || priv.microphone.isActive ? 'Active Stream' : 'Idle & Monitored'),
+                              'Zero-Media Enforced',
                               Icons.videocam_rounded,
                               () => state.navigateTo(3),
                             ),

@@ -298,6 +298,8 @@ class AuraStateProvider extends ChangeNotifier {
     });
   }
 
+  int _pollTickCounter = 0;
+
   Future<void> _pollLiveTelemetry() async {
     try {
       final prevCamActive = _privacySummary?.camera.isActive;
@@ -305,6 +307,13 @@ class AuraStateProvider extends ChangeNotifier {
 
       _telemetry = await apiService.getSystemInfo();
       _privacySummary = await apiService.getPrivacySummary();
+
+      _pollTickCounter++;
+      if (_pollTickCounter % 3 == 0) {
+        try { _network = await apiService.investigateNetwork(); } catch (_) {}
+        try { _findings = await apiService.getFindings(); } catch (_) {}
+        try { _aiExplanation = await apiService.getAiExplanation(); } catch (_) {}
+      }
 
       // Detect hardware state changes for live story
       if (_privacySummary != null) {

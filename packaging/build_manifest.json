@@ -1,7 +1,7 @@
 {
   "app_name": "AURA Privacy Guardian",
   "version": "2.0.0",
-  "build_timestamp": "2026-08-27T15:44:47.850409+00:00",
+  "build_timestamp": "2026-08-27T16:47:46.248320+00:00",
   "platform": "Windows",
   "architecture": "64bit",
   "python_version": "3.14.3",
@@ -15,8 +15,8 @@
   "artifacts": {
     "aura-agent.exe": {
       "relpath": "packaging\\dist\\AURA-Privacy-Guardian\\backend\\aura-agent.exe",
-      "sha256": "5f7cbe838d17261405015ea794e3abc7bf7a6a5aa07b14955ece3c10e2df1b1f",
-      "size_bytes": 25456817
+      "sha256": "c17084293d433908063476668ff47b98b3c7cf14303d458fcb4142aa542457be",
+      "size_bytes": 25456956
     },
     "aura_desktop.exe": {
       "relpath": "packaging\\dist\\AURA-Privacy-Guardian\\desktop\\aura_desktop.exe",
@@ -35,8 +35,8 @@
     },
     "AURA-Privacy-Guardian-v2.0.0-win64.zip": {
       "relpath": "packaging\\dist\\AURA-Privacy-Guardian-v2.0.0-win64.zip",
-      "sha256": "50735ccf3dc4bb8fdd58e5bf8498f01b1532d62c486e4fc434a4349c39950187",
-      "size_bytes": 159768421
+      "sha256": "05ba96fcca1e4692ed96c4ae47aa5683f16865ba2ab8d06785977fc60e30d52a",
+      "size_bytes": 159768198
     }
   }
 }
