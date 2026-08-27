@@ -10,6 +10,35 @@ import logging
 from typing import Any
 import uuid
 
+from aura.contracts.intelligence import (
+    AnalyticsMetricsResponse,
+    AnomalyExplanationResponse,
+    FullSecurityAuditReportResponse,
+    NetworkInvestigationResponse,
+    OpenShortcutRequest,
+    PersistenceAnalysisResponse,
+    ProcessDNAResponse,
+    ResponseActionResultResponse,
+    SecurityAlertResponse,
+    SecurityIncidentResponse,
+    TerminateProcessRequest,
+    ThreatHuntResultResponse,
+    TimelineItemResponse,
+    UpdateIncidentStateRequest,
+)
+from aura.intelligence.alerts import AlertEngine
+from aura.intelligence.analytics import SecurityAnalyticsEngine
+from aura.intelligence.explainability import AIExplainabilityEngine
+from aura.intelligence.findings import FindingSeverity
+from aura.intelligence.incidents import IncidentManager, IncidentState
+from aura.intelligence.network_intel import NetworkInvestigationEngine
+from aura.intelligence.persistence_intel import PersistenceIntelligenceEngine
+from aura.intelligence.process_dna import ProcessDNAService
+from aura.intelligence.reports import SecurityReportGenerator
+from aura.intelligence.response import SafeResponseEngine
+from aura.intelligence.threat_hunter import ThreatHuntingEngine
+from aura.intelligence.timeline import ForensicTimelineEngine
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -1113,3 +1142,217 @@ async def get_privacy_summary(
         "microphone": mic_snap.to_dict(),
         "overall_privacy_score": priv_score,
     }
+
+
+# ==============================================================================
+# MASTER 2: SECURITY INTELLIGENCE & INVESTIGATION ENDPOINTS
+# ==============================================================================
+
+@router.get(
+    "/processes/{pid}/dna",
+    response_model=ProcessDNAResponse,
+    summary="Get complete Process DNA profile (identity, execution, network, privacy, security)",
+)
+async def get_process_dna(
+    pid: int,
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+) -> Any:
+    dna = ProcessDNAService.get_process_dna(pid)
+    if not dna:
+        raise NotFoundError(f"Process with PID {pid} not found or terminated.")
+    return dna.to_dict()
+
+
+@router.get(
+    "/network/investigate",
+    response_model=NetworkInvestigationResponse,
+    summary="Investigate active socket flows, endpoint classifications, and exposure vectors",
+)
+async def investigate_network(
+    limit: int = Query(default=150, ge=1, le=500),
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+) -> Any:
+    snap = NetworkInvestigationEngine.investigate(limit=limit)
+    return snap.to_dict()
+
+
+@router.get(
+    "/persistence/analysis",
+    response_model=PersistenceAnalysisResponse,
+    summary="Deep analysis of Run keys, startup apps, services, and scheduled tasks",
+)
+async def analyze_persistence(
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+) -> Any:
+    snap = PersistenceIntelligenceEngine.analyze()
+    return snap.to_dict()
+
+
+@router.post(
+    "/threats/hunts/run",
+    response_model=ThreatHuntResultResponse,
+    summary="Execute multi-vector threat hunting queries across memory, network, and registry",
+)
+async def run_threat_hunts(
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.OPERATOR)),
+) -> Any:
+    res = ThreatHuntingEngine.execute_hunts()
+    return res.to_dict()
+
+
+@router.get(
+    "/ai/explain",
+    response_model=AnomalyExplanationResponse,
+    summary="Explainable AI anomaly report with normalized feature bounds and LOF insights",
+)
+async def explain_anomaly(
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+    engine: AuraEngineService = Depends(get_engine),
+) -> Any:
+    telem = engine.collector.collect_snapshot(probe_camera=False, probe_microphone=False)
+    posture = SecurityPostureCollector.collect_posture()
+    exp = AIExplainabilityEngine.explain(telemetry=telem, ensemble=engine.scan_engine.ensemble, posture=posture)
+    return exp.to_dict()
+
+
+@router.get(
+    "/timeline",
+    response_model=list[TimelineItemResponse],
+    summary="Get chronological forensic security timeline items",
+)
+async def get_timeline(
+    limit: int = Query(default=50, ge=1, le=200),
+    severity: str | None = Query(default=None),
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+) -> Any:
+    items = ForensicTimelineEngine.get_timeline(limit=limit, severity=severity)
+    return [i.to_dict() for i in items]
+
+
+@router.get(
+    "/incidents",
+    response_model=list[SecurityIncidentResponse],
+    summary="Get list of security incidents",
+)
+async def get_incidents(
+    limit: int = Query(default=50, ge=1, le=100),
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+) -> Any:
+    incidents = IncidentManager.get_incidents(limit=limit)
+    return [i.to_dict() for i in incidents]
+
+
+@router.get(
+    "/incidents/{incident_id}",
+    response_model=SecurityIncidentResponse,
+    summary="Get specific security incident by ID",
+)
+async def get_incident_by_id(
+    incident_id: str,
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+) -> Any:
+    inc = IncidentManager.get_incident_by_id(incident_id)
+    if not inc:
+        raise NotFoundError(f"Incident {incident_id} not found.")
+    return inc.to_dict()
+
+
+@router.post(
+    "/incidents/{incident_id}/state",
+    summary="Update incident lifecycle state",
+)
+async def update_incident_state(
+    incident_id: str,
+    body: UpdateIncidentStateRequest,
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.OPERATOR)),
+) -> Any:
+    state_enum = IncidentState(body.state)
+    success = IncidentManager.update_incident_state(
+        incident_id=incident_id,
+        new_state=state_enum,
+        actor=claims.issued_to,
+        note=body.note,
+    )
+    if not success:
+        raise NotFoundError(f"Incident {incident_id} not found.")
+    return {"incident_id": incident_id, "state": body.state, "updated": True}
+
+
+@router.post(
+    "/response/terminate-process",
+    response_model=ResponseActionResultResponse,
+    summary="Safely terminate a suspicious process with audit logging",
+)
+async def terminate_process_endpoint(
+    body: TerminateProcessRequest,
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.OPERATOR)),
+) -> Any:
+    res = SafeResponseEngine.terminate_process(pid=body.pid, actor=claims.issued_to)
+    return res.to_dict()
+
+
+@router.post(
+    "/response/open-shortcut",
+    response_model=ResponseActionResultResponse,
+    summary="Open Windows privacy or security configuration shortcut",
+)
+async def open_shortcut_endpoint(
+    body: OpenShortcutRequest,
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.OPERATOR)),
+) -> Any:
+    res = SafeResponseEngine.open_system_shortcut(shortcut_type=body.shortcut_type, actor=claims.issued_to)
+    return res.to_dict()
+
+
+@router.get(
+    "/alerts",
+    response_model=list[SecurityAlertResponse],
+    summary="Get recent security alerts",
+)
+async def get_alerts_endpoint(
+    limit: int = Query(default=50, ge=1, le=100),
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+) -> Any:
+    alerts = AlertEngine.get_alerts(limit=limit)
+    return [a.to_dict() for a in alerts]
+
+
+@router.post(
+    "/alerts/{alert_id}/acknowledge",
+    summary="Acknowledge a security alert",
+)
+async def acknowledge_alert_endpoint(
+    alert_id: str,
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.OPERATOR)),
+) -> Any:
+    success = AlertEngine.acknowledge_alert(alert_id=alert_id, actor=claims.issued_to)
+    if not success:
+        raise NotFoundError(f"Alert {alert_id} not found.")
+    return {"alert_id": alert_id, "acknowledged": True}
+
+
+@router.get(
+    "/analytics/overview",
+    response_model=AnalyticsMetricsResponse,
+    summary="Get aggregated security and privacy analytics metrics",
+)
+async def get_analytics_overview(
+    time_window: str = Query(default="24h"),
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.READ_ONLY)),
+    storage: StorageEngine = Depends(get_storage),
+) -> Any:
+    metrics = SecurityAnalyticsEngine.compute_metrics(storage=storage, time_window=time_window)
+    return metrics.to_dict()
+
+
+@router.post(
+    "/reports/generate",
+    response_model=FullSecurityAuditReportResponse,
+    summary="Generate comprehensive executive & technical security audit report",
+)
+async def generate_report_endpoint(
+    claims: AuthTokenClaims = Depends(require_scope(AuthScope.OPERATOR)),
+    storage: StorageEngine = Depends(get_storage),
+) -> Any:
+    rep = SecurityReportGenerator.generate_full_report(storage=storage)
+    return rep.to_dict()
