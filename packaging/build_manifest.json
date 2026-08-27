@@ -1,31 +1,42 @@
 {
   "app_name": "AURA Privacy Guardian",
   "version": "2.0.0",
-  "build_timestamp": "2026-08-27T15:01:44.714466+00:00",
+  "build_timestamp": "2026-08-27T15:44:47.850409+00:00",
   "platform": "Windows",
   "architecture": "64bit",
   "python_version": "3.14.3",
-  "packaging_type": "PyInstaller onedir + Flutter Desktop Windows Native + InnoSetup",
+  "packaging_type": "PyInstaller onedir + Flutter Desktop Windows Native + Portable ZIP",
   "entrypoints": {
-    "agent": "aura.entrypoints.agent_main",
-    "cli": "aura.entrypoints.cli_main",
-    "desktop": "aura_desktop/build/windows/x64/runner/Release/aura_desktop.exe"
+    "agent": "backend/aura-agent.exe",
+    "desktop": "desktop/aura_desktop.exe",
+    "launcher_bat": "AURA.bat",
+    "launcher_ps1": "Launch-AURA.ps1"
   },
   "artifacts": {
-    "agent_main.py": {
-      "relpath": "aura\\entrypoints\\agent_main.py",
-      "sha256": "860c4d65dd82e2320ce056755fbe6073997be77bf0b9d1a1ff581083415053d9",
-      "size_bytes": 904
-    },
-    "index.html": {
-      "relpath": "web\\index.html",
-      "sha256": "bd1c214cf574ff62b6316feb6c86aa4c0dc955d6bf51880da439c598e1e672c2",
-      "size_bytes": 628
+    "aura-agent.exe": {
+      "relpath": "packaging\\dist\\AURA-Privacy-Guardian\\backend\\aura-agent.exe",
+      "sha256": "5f7cbe838d17261405015ea794e3abc7bf7a6a5aa07b14955ece3c10e2df1b1f",
+      "size_bytes": 25456817
     },
     "aura_desktop.exe": {
-      "relpath": "aura_desktop\\build\\windows\\x64\\runner\\Release\\aura_desktop.exe",
+      "relpath": "packaging\\dist\\AURA-Privacy-Guardian\\desktop\\aura_desktop.exe",
       "sha256": "69bfb4542724f476e17d2c2256e87f2f254efd571512d48f9e9d659916aeb647",
       "size_bytes": 91136
+    },
+    "AURA.bat": {
+      "relpath": "packaging\\dist\\AURA-Privacy-Guardian\\AURA.bat",
+      "sha256": "cdba0963619370e0ea649e357aa79119f78d54b3de86e46204b7dedad865b6c5",
+      "size_bytes": 1075
+    },
+    "Launch-AURA.ps1": {
+      "relpath": "packaging\\dist\\AURA-Privacy-Guardian\\Launch-AURA.ps1",
+      "sha256": "dbd53577586cd4fe1056d94ebe1ee004e6308a35619a18585268f32fc2de6f2a",
+      "size_bytes": 1169
+    },
+    "AURA-Privacy-Guardian-v2.0.0-win64.zip": {
+      "relpath": "packaging\\dist\\AURA-Privacy-Guardian-v2.0.0-win64.zip",
+      "sha256": "50735ccf3dc4bb8fdd58e5bf8498f01b1532d62c486e4fc434a4349c39950187",
+      "size_bytes": 159768421
     }
   }
 }
