@@ -76,8 +76,16 @@ def build_pipeline() -> int:
         shutil.copytree(web_src, web_dest, dirs_exist_ok=True)
         print(f"   Staged web assets -> {web_dest}")
 
-    # 4. Generate Build Manifest
-    print("4. Generating SHA-256 build manifest...")
+    # 4. Stage Flutter Desktop binary assets
+    print("4. Staging Flutter Desktop application assets...")
+    flutter_release_src = WORKSPACE_ROOT / "aura_desktop" / "build" / "windows" / "x64" / "runner" / "Release"
+    desktop_dest = agent_dist / "desktop"
+    if flutter_release_src.exists():
+        shutil.copytree(flutter_release_src, desktop_dest, dirs_exist_ok=True)
+        print(f"   Staged Flutter Desktop -> {desktop_dest}")
+
+    # 5. Generate Build Manifest
+    print("5. Generating SHA-256 build manifest...")
     manifest = {
         "app_name": __app_name__,
         "version": __version__,
@@ -85,16 +93,25 @@ def build_pipeline() -> int:
         "platform": platform.system(),
         "architecture": platform.architecture()[0],
         "python_version": sys.version.split()[0],
-        "packaging_type": "PyInstaller onedir + InnoSetup",
+        "packaging_type": "PyInstaller onedir + Flutter Desktop Windows Native + InnoSetup",
         "entrypoints": {
             "agent": "aura.entrypoints.agent_main",
             "cli": "aura.entrypoints.cli_main",
+            "desktop": "aura_desktop/build/windows/x64/runner/Release/aura_desktop.exe",
         },
         "artifacts": {},
     }
 
     # Hash staged core files
-    for p in [WORKSPACE_ROOT / "aura" / "entrypoints" / "agent_main.py", WORKSPACE_ROOT / "web" / "index.html"]:
+    tracked_files = [
+        WORKSPACE_ROOT / "aura" / "entrypoints" / "agent_main.py",
+        WORKSPACE_ROOT / "web" / "index.html",
+    ]
+    desktop_exe = flutter_release_src / "aura_desktop.exe"
+    if desktop_exe.exists():
+        tracked_files.append(desktop_exe)
+
+    for p in tracked_files:
         if p.exists():
             manifest["artifacts"][p.name] = {
                 "relpath": str(p.relative_to(WORKSPACE_ROOT)),

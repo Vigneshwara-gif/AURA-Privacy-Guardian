@@ -1,14 +1,15 @@
 {
   "app_name": "AURA Privacy Guardian",
   "version": "2.0.0",
-  "build_timestamp": "2026-08-27T10:47:18.126634+00:00",
+  "build_timestamp": "2026-08-27T11:15:32.247477+00:00",
   "platform": "Windows",
   "architecture": "64bit",
   "python_version": "3.14.3",
-  "packaging_type": "PyInstaller onedir + InnoSetup",
+  "packaging_type": "PyInstaller onedir + Flutter Desktop Windows Native + InnoSetup",
   "entrypoints": {
     "agent": "aura.entrypoints.agent_main",
-    "cli": "aura.entrypoints.cli_main"
+    "cli": "aura.entrypoints.cli_main",
+    "desktop": "aura_desktop/build/windows/x64/runner/Release/aura_desktop.exe"
   },
   "artifacts": {
     "agent_main.py": {
@@ -20,6 +21,11 @@
       "relpath": "web\\index.html",
       "sha256": "bd1c214cf574ff62b6316feb6c86aa4c0dc955d6bf51880da439c598e1e672c2",
       "size_bytes": 628
+    },
+    "aura_desktop.exe": {
+      "relpath": "aura_desktop\\build\\windows\\x64\\runner\\Release\\aura_desktop.exe",
+      "sha256": "6a1a0930f808c12f0b7980d761391e190eb71eacb367051642da21b0b5ee267a",
+      "size_bytes": 91136
     }
   }
 }
