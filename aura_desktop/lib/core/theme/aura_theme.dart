@@ -58,4 +58,36 @@ class AuraTheme {
       ),
     );
   }
+
+  static Color getSeverityColor(String? severity) {
+    if (severity == null) return textSecondary;
+    switch (severity.toUpperCase().trim()) {
+      case 'CRITICAL':
+      case 'FAIL':
+      case 'FAILED':
+        return critical;
+      case 'HIGH':
+        return high;
+      case 'MEDIUM':
+      case 'WARN':
+      case 'WARNING':
+      case 'ELEVATED':
+      case 'ATTENTION':
+        return warning;
+      case 'LOW':
+        return low;
+      case 'NORMAL':
+      case 'INFO':
+      case 'INFORMATIONAL':
+      case 'HEALTHY':
+      case 'NOMINAL':
+      case 'PASS':
+      case 'PASSED':
+      case 'OK':
+      case 'PROTECTED':
+        return healthy;
+      default:
+        return textSecondary;
+    }
+  }
 }
